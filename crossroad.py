@@ -1,3 +1,4 @@
+from Car import Car
 from flow import inflow
 import copy
 
@@ -6,7 +7,7 @@ class Crossroad:
     is_proactive = True
     config = {}
     tick = 0
-    cars = [[None, {}, {}, {}], [{}, None, {}, {}], [{}, {}, None, {}], [{}, {}, {}, None]]
+    cars = [[None, [], [], []], [[], None, [], []], [[], [], None, []], [[], [], [], None]]
     phase = 0
     total_delay = 0
     total_cars = 0
@@ -26,7 +27,8 @@ class Crossroad:
         for i in range(4):
             for j in range(4):
                 if current_inflow[i][j] != 0:
-                    self.cars[i][j][self.tick] = current_inflow[i][j]
+                    for k in range(current_inflow[i][j]):
+                        self.cars[i][j].append(Car(self.tick))
 
         outflow_list = []
         if self.phase == 0:
@@ -63,20 +65,14 @@ class Crossroad:
         for outflow in outflow_list:
             outflow_value = int(self.config['OUTFLOW_' + outflow[0]])
             while outflow_value > 0:
-                if len(outflow[1].keys()) == 0:
+                if len(outflow[1]) == 0:
                     break
-                target = min(outflow[1].keys())
-                if outflow[1][target] <= outflow_value:
-                    outflow_value -= outflow[1][target]
-                    self.total_delay += outflow[1][target] * (self.tick - target)
-                    self.total_cars += outflow[1][target]
-                    outflow[1].pop(target)
-                else:
-                    outflow[1][target] -= outflow_value
-                    self.total_delay += outflow_value * (self.tick - target)
-                    self.total_cars += outflow_value
-                    outflow_value = 0
+                target = outflow[1].pop(0)
+                outflow_value -= 1
+                self.total_delay += self.tick - target.tick
+                self.total_cars += 1
 
+    # TODO : Verifier with SPRT
     def decision_making(self):
         return [5, 5, 5, 5, 5, 5]
 
