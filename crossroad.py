@@ -1,6 +1,6 @@
+import csv
+
 from Car import Car
-from flow import inflow
-import copy
 
 
 class Crossroad:
@@ -22,13 +22,27 @@ class Crossroad:
                 config_content = config_split[1].strip('\n')
                 self.config[config_type] = config_content
 
+        self.tick = int(self.config['START_TICK'])
+        self.config['SECONDS_PER_TICK'] = int(self.config['SECONDS_PER_TICK'])
+        self.config['TOTAL_TICKS_PER_HOUR'] = int(60 * 60 / self.config['SECONDS_PER_TICK'])
+        self.config['TOTAL_TICKS_PER_DAY'] = self.config['TOTAL_TICKS_PER_HOUR'] * 24
+
+        with open(self.config['FLOW_DATA'], "r") as f:
+            flow_reader = csv.reader(f)
+            self.flow_data = []
+            for row in flow_reader:
+                self.flow_data.append(row)
+
+    def inflow(self):
+        tick = self.tick % self.config['TOTAL_TICKS_PER_DAY']
+        return self.flow_data[tick]
+
     def update(self):
-        current_inflow = inflow(self.tick)
+        current_inflow = self.inflow()
         for i in range(4):
             for j in range(4):
-                if current_inflow[i][j] != 0:
-                    for k in range(current_inflow[i][j]):
-                        self.cars[i][j].append(Car(self.tick))
+                for k in range(int(current_inflow[i * 4 + j])):
+                    self.cars[i][j].append(Car(self.tick))
 
         outflow_list = []
         if self.phase == 0:
