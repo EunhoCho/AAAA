@@ -2,7 +2,8 @@ import csv
 
 import numpy as np
 
-if __name__ == '__main__':
+
+def generate_flow_data():
     config = {}
     with open('config.txt', 'r') as config_file:
         config_lines = config_file.readlines()
@@ -68,3 +69,7 @@ if __name__ == '__main__':
         csv_writer.writerow(value)
 
     csv_file.close()
+
+
+if __name__ == '__main__':
+    generate_flow_data()
