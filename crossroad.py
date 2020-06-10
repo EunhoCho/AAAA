@@ -7,18 +7,17 @@ from Car import Car
 
 
 class Crossroad:
-    cross_type = 1
-    config = {}
-    tick = 0
-    cars = [[None, [], [], []], [[], None, [], []], [[], [], None, []], [[], [], [], None]]
-    num_cars = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
-    wait_outflow = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
-    phase = 0
-    total_delay = 0
-    total_cars = 0
-
     def __init__(self, config, cross_type=1):
         self.cross_type = cross_type
+        self.phase = 0
+        self.total_delay = 0
+        self.total_cars = 0
+        self.config = {}
+        self.tick = 0
+        self.cars = [[None, [], [], []], [[], None, [], []], [[], [], None, []], [[], [], [], None]]
+        self.num_cars = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
+        self.wait_outflow = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
+
         with open(config, 'r') as config_file:
             config_lines = config_file.readlines()
             for config_line in config_lines:
@@ -74,7 +73,7 @@ class Crossroad:
         return ans
 
     def update(self):
-        current_inflow = self.inflow()
+        current_inflow = self.inflow(raw=False)
         for i in range(4):
             for j in range(4):
                 for k in range(current_inflow[i][j]):
@@ -165,6 +164,9 @@ class Crossroad:
                     residual += residual_val
 
                 ans.append(value)
+
+            print(ans)
+
             return ans
 
         else:
@@ -228,15 +230,22 @@ class Crossroad:
                                 for outflow in outflow_list:
                                     outflow_value = self.config['OUTFLOW_' + outflow[0]]
                                     outflow_value += wait_outflow[outflow[1]][outflow[2]]
-                                    while outflow_value >= 1:
-                                        if remain_cars[outflow[1]][outflow[2]] == 0:
-                                            break
-                                        outflow_value -= 1
-                                        remain_cars[outflow[1]][outflow[2]] -= 1
 
-                                    if outflow_value > 0:
-                                        new_wait_outflow[outflow[1]][outflow[2]] = outflow_value
-                                wait_outflow = new_wait_outflow
+                                    if self.cross_type == 1:
+                                        if remain_cars[outflow[1]][outflow[2]] > outflow_value:
+                                            remain_cars[outflow[1]][outflow[2]] -= outflow_value
+                                        else:
+                                            remain_cars[outflow[1]][outflow[2]] = 0
+                                    else:
+                                        while outflow_value >= 1:
+                                            if remain_cars[outflow[1]][outflow[2]] == 0:
+                                                break
+                                            outflow_value -= 1
+                                            remain_cars[outflow[1]][outflow[2]] -= 1
+
+                                        if outflow_value > 0:
+                                            new_wait_outflow[outflow[1]][outflow[2]] = outflow_value
+                                    wait_outflow = new_wait_outflow
 
                                 for p in range(4):
                                     for q in range(4):
@@ -254,9 +263,16 @@ class Crossroad:
         phase_length = []
         phase_tick = 0
 
+        log_file = open('log_' + str(self.cross_type) + '.csv', 'w', newline='')
+        log_writer = csv.writer(log_file)
+
+        dm_file = open('dm_' + str(self.cross_type) + '.csv', 'w', newline='')
+        dm_writer = csv.writer(dm_file)
+
         while self.tick < max_frame:
             if self.tick % decision_length == 0:
                 phase_length = self.decision_making()
+                dm_writer.writerow([self.tick] + phase_length)
                 self.phase = 0
                 phase_tick = 0
 
@@ -266,7 +282,15 @@ class Crossroad:
 
             self.update()
 
+            write_row = [self.tick, self.phase, self.total_delay, self.total_cars]
+            for i in range(4):
+                for j in range(4):
+                    write_row.append(self.num_cars[i][j])
+            log_writer.writerow(write_row)
             print(self.tick, self.phase, self.total_delay, self.total_cars, self.num_cars)
 
             phase_tick += 1
             self.tick += 1
+
+        log_file.close()
+        dm_file.close()

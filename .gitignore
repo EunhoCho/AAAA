@@ -213,3 +213,5 @@ pip-selfcheck.json
 
 inflow.csv
 raw_inflow.csv
+log_*.csv
+dm_*.csv
