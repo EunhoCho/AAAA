@@ -1,11 +1,13 @@
 import copy
 import csv
 
+import numpy as np
+
 from Car import Car
 
 
 class Crossroad:
-    is_proactive = True
+    cross_type = 1
     config = {}
     tick = 0
     cars = [[None, [], [], []], [[], None, [], []], [[], [], None, []], [[], [], [], None]]
@@ -15,8 +17,8 @@ class Crossroad:
     total_delay = 0
     total_cars = 0
 
-    def __init__(self, config, is_proactive=False):
-        self.is_proactive = is_proactive
+    def __init__(self, config, cross_type=1):
+        self.cross_type = cross_type
         with open(config, 'r') as config_file:
             config_lines = config_file.readlines()
             for config_line in config_lines:
@@ -45,14 +47,26 @@ class Crossroad:
                     new_row.append(int(row[i]))
                 self.flow_data.append(new_row)
 
-    def inflow(self, start_tick=-1, length=1):
+        with open('raw_' + self.config['FLOW_DATA'], "r") as f:
+            flow_reader = csv.reader(f)
+            self.raw_flow_data = []
+            for row in flow_reader:
+                new_row = []
+                for i in range(len(row)):
+                    new_row.append(float(row[i]))
+                self.raw_flow_data.append(new_row)
+
+    def inflow(self, start_tick=-1, length=1, raw=False):
         if start_tick == -1:
             start_tick = self.tick
         tick = start_tick % self.config['TOTAL_TICKS_PER_DAY']
 
         ans = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
         for i in range(tick, tick + length):
-            flow_tick = self.flow_data[i]
+            if raw:
+                flow_tick = self.raw_flow_data[i]
+            else:
+                flow_tick = self.flow_data[i]
             for j in range(4):
                 for k in range(4):
                     ans[j][k] += flow_tick[j * 4 + k]
@@ -120,24 +134,59 @@ class Crossroad:
     def decision_making(self):
         decision_length = int(self.config['DECISION_LENGTH'])
 
-        if self.is_proactive:
+        if self.cross_type != 0:
             start_tick = self.tick
+        elif self.tick == 0:
+            div = decision_length / 6
+            ans = []
+            residual = 0
+            for i in range(6):
+                value = int(div)
+                residual += div - int(div)
+
+                residual_val = int(residual)
+                residual -= int(residual)
+
+                if residual > 0:
+                    random_val = np.random.choice([0, 1], 1, p=[1 - residual, residual])[0]
+                    residual -= random_val
+                elif residual < 0:
+                    random_val = np.random.choice([-1, 0], 1, p=[- residual, 1 + residual])[0]
+                    residual -= random_val
+                else:
+                    random_val = 0
+
+                value += residual_val + random_val
+                if value < 0:
+                    value -= random_val
+                    residual += random_val
+                if value < 0:
+                    value -= residual_val
+                    residual += residual_val
+
+                ans.append(value)
+            return ans
+
         else:
             start_tick = self.tick - decision_length
 
-        ans = [1, 1, 1, 1, 1, decision_length - 5]
+        ans = [0, 0, 0, 0, 0, 0]
         minimum = -1
-        for i in range(1, decision_length - 4):
-            for j in range(1, decision_length - i - 3):
-                for k in range(1, decision_length - i - j - 2):
-                    for l in range(1, decision_length - i - j - k - 1):
-                        for m in range(1, decision_length - i - j - k - l):
+        for i in range(0, decision_length + 1):
+            for j in range(0, decision_length - i + 1):
+                for k in range(0, decision_length - i - j + 1):
+                    for l in range(0, decision_length - i - j - k + 1):
+                        for m in range(0, decision_length - i - j - k - l + 1):
                             remain_cars = copy.deepcopy(self.num_cars)
-                            remain_cars[0][0] = 1234123
                             wait_outflow = copy.deepcopy(self.wait_outflow)
 
+                            num_cars = 0
                             for t in range(decision_length):
-                                phase_inflow = self.inflow(start_tick=start_tick + t)
+                                if self.cross_type == 1:
+                                    phase_inflow = self.inflow(start_tick=start_tick + t, raw=True)
+                                else:
+                                    phase_inflow = self.inflow(start_tick=start_tick + t, raw=False)
+
                                 for p in range(4):
                                     for q in range(4):
                                         remain_cars[p][q] += phase_inflow[p][q]
@@ -189,10 +238,9 @@ class Crossroad:
                                         new_wait_outflow[outflow[1]][outflow[2]] = outflow_value
                                 wait_outflow = new_wait_outflow
 
-                            num_cars = 0
-                            for p in range(4):
-                                for q in range(4):
-                                    num_cars += remain_cars[p][q]
+                                for p in range(4):
+                                    for q in range(4):
+                                        num_cars += remain_cars[p][q]
 
                             if minimum == -1 or num_cars < minimum:
                                 ans = [i, j, k, l, m, decision_length - i - j - k - l - m]
@@ -203,8 +251,9 @@ class Crossroad:
     def run(self):
         max_frame = int(self.config['MAX_FRAME'])
         decision_length = int(self.config['DECISION_LENGTH'])
-        phase_length = self.decision_making()
+        phase_length = []
         phase_tick = 0
+
         while self.tick < max_frame:
             if self.tick % decision_length == 0:
                 phase_length = self.decision_making()

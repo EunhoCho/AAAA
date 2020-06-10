@@ -1,4 +1,5 @@
 import csv
+import random
 
 import numpy as np
 
@@ -38,6 +39,35 @@ def generate_flow_data():
 
     data = np.array(data)
 
+    raw_flow = [[], [], [], []]
+    for i in range(4):
+        for j in range(4):
+            if i != j:
+                div = sum(data) / int(target_data[i][j])
+                route_data = data / div
+
+                route_flow = []
+                for k in range(total_ticks_per_day):
+                    value = route_data[k]
+                    route_flow.append(value)
+
+                raw_flow[i].append(route_flow)
+            else:
+                raw_flow[i].append(None)
+
+    csv_file = open('raw_' + config['FLOW_DATA'], 'w', newline='')
+    csv_writer = csv.writer(csv_file)
+    for k in range(total_ticks_per_day):
+        value = []
+        for i in range(4):
+            for j in range(4):
+                if i == j:
+                    value.append(0)
+                else:
+                    value.append(raw_flow[i][j][k])
+        csv_writer.writerow(value)
+    csv_file.close()
+
     flow = [[], [], [], []]
     for i in range(4):
         for j in range(4):
@@ -49,9 +79,31 @@ def generate_flow_data():
                 route_flow = []
                 for k in range(total_ticks_per_day):
                     value = route_data[k]
+
                     residual += value - int(value)
-                    route_flow.append(int(value) + int(residual))
-                    residual -= int(residual)
+                    residual_val = int(residual)
+                    residual -= residual_val
+
+                    if residual > 0:
+                        random_val = np.random.choice([0, 1], 1, p=[1 - residual, residual])[0]
+                        residual -= random_val
+                    elif residual < 0:
+                        random_val = np.random.choice([-1, 0], 1, p=[- residual, 1 + residual])[0]
+                        residual -= random_val
+                    else:
+                        random_val = 0
+
+                    flow_val = int(value) + residual_val + random_val
+
+                    if flow_val < 0:
+                        residual += random_val
+                        flow_val -= random_val
+                    if flow_val < 0:
+                        residual += residual_val
+                        flow_val -= residual_val
+
+                    route_flow.append(flow_val)
+
                 flow[i].append(route_flow)
             else:
                 flow[i].append(None)
