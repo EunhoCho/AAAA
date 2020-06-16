@@ -4,6 +4,54 @@ import random
 import numpy as np
 
 
+def generate_inflow(raw_flow):
+    """
+    Generate the discrete inflow based on the raw inflow.
+
+    :param raw_flow: Average inflow of each tick / road
+    :return:
+    """
+    total_ticks = len(raw_flow[i][j])
+    flow = [[], [], [], []]
+    for i in range(4):
+        for j in range(4):
+            if i != j:
+                residual = 0
+                route_flow = []
+                for k in range(total_ticks):
+                    value = raw_flow[i][j][k]
+
+                    residual += value - int(value)
+                    residual_val = int(residual)
+                    residual -= residual_val
+
+                    if residual > 0:
+                        random_val = np.random.choice([0, 1], 1, p=[1 - residual, residual])[0]
+                        residual -= random_val
+                    elif residual < 0:
+                        random_val = np.random.choice([-1, 0], 1, p=[- residual, 1 + residual])[0]
+                        residual -= random_val
+                    else:
+                        random_val = 0
+
+                    flow_val = int(value) + residual_val + random_val
+
+                    if flow_val < 0:
+                        residual += random_val
+                        flow_val -= random_val
+                    if flow_val < 0:
+                        residual += residual_val
+                        flow_val -= residual_val
+
+                    route_flow.append(flow_val)
+
+                flow[i].append(route_flow)
+            else:
+                flow[i].append(None)
+
+    return flow
+
+
 def generate_flow_data(config_file='config.txt'):
     """
     Make a flow data on the configuration file, and record it into the csv file.
@@ -79,45 +127,7 @@ def generate_flow_data(config_file='config.txt'):
         csv_writer.writerow(value)
     csv_file.close()
 
-    flow = [[], [], [], []]
-    for i in range(4):
-        for j in range(4):
-            if i != j:
-                div = sum(data) / int(target_data[i][j])
-                route_data = data / div
-
-                residual = 0
-                route_flow = []
-                for k in range(total_ticks_per_day):
-                    value = route_data[k]
-
-                    residual += value - int(value)
-                    residual_val = int(residual)
-                    residual -= residual_val
-
-                    if residual > 0:
-                        random_val = np.random.choice([0, 1], 1, p=[1 - residual, residual])[0]
-                        residual -= random_val
-                    elif residual < 0:
-                        random_val = np.random.choice([-1, 0], 1, p=[- residual, 1 + residual])[0]
-                        residual -= random_val
-                    else:
-                        random_val = 0
-
-                    flow_val = int(value) + residual_val + random_val
-
-                    if flow_val < 0:
-                        residual += random_val
-                        flow_val -= random_val
-                    if flow_val < 0:
-                        residual += residual_val
-                        flow_val -= residual_val
-
-                    route_flow.append(flow_val)
-
-                flow[i].append(route_flow)
-            else:
-                flow[i].append(None)
+    flow = generate_inflow(raw_flow, total_ticks_per_day)
 
     csv_file = open(config['FLOW_DATA'], 'w', newline='')
     csv_writer = csv.writer(csv_file)
