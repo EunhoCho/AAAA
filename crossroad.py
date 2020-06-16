@@ -6,6 +6,48 @@ import numpy as np
 from Car import Car
 
 
+def setup_outflow(phase):
+    """
+    Setup outflow based on the given phase
+
+    :param phase: The phase of the outflow
+    :return: List of tuples that defined the outflow roads on the tick
+    """
+    outflow_list = []
+    if phase == 0:
+        outflow_list.append(('STRAIGHT', 0, 1))
+        outflow_list.append(('LEFT', 0, 2))
+        outflow_list.append(('RIGHT', 0, 3))
+        outflow_list.append(('RIGHT', 2, 0))
+    elif phase == 1:
+        outflow_list.append(('STRAIGHT', 0, 1))
+        outflow_list.append(('STRAIGHT', 1, 0))
+        outflow_list.append(('RIGHT', 0, 3))
+        outflow_list.append(('RIGHT', 1, 2))
+    elif phase == 2:
+        outflow_list.append(('STRAIGHT', 1, 0))
+        outflow_list.append(('LEFT', 1, 3))
+        outflow_list.append(('RIGHT', 1, 2))
+        outflow_list.append(('RIGHT', 3, 1))
+    elif phase == 3:
+        outflow_list.append(('STRAIGHT', 2, 3))
+        outflow_list.append(('LEFT', 2, 1))
+        outflow_list.append(('RIGHT', 2, 0))
+        outflow_list.append(('RIGHT', 1, 2))
+    elif phase == 4:
+        outflow_list.append(('STRAIGHT', 2, 3))
+        outflow_list.append(('STRAIGHT', 3, 2))
+        outflow_list.append(('RIGHT', 2, 0))
+        outflow_list.append(('RIGHT', 3, 1))
+    elif phase == 5:
+        outflow_list.append(('STRAIGHT', 3, 2))
+        outflow_list.append(('LEFT', 3, 0))
+        outflow_list.append(('RIGHT', 3, 1))
+        outflow_list.append(('RIGHT', 0, 3))
+
+    return outflow_list
+
+
 class Crossroad:
     """
     A class for representing the crossroad.
@@ -144,37 +186,7 @@ class Crossroad:
                     self.num_cars[i][j] += 1
 
         # Setup the outflow based on the phase.
-        outflow_list = []
-        if self.phase == 0:
-            outflow_list.append(('STRAIGHT', 0, 1))
-            outflow_list.append(('LEFT', 0, 2))
-            outflow_list.append(('RIGHT', 0, 3))
-            outflow_list.append(('RIGHT', 2, 0))
-        elif self.phase == 1:
-            outflow_list.append(('STRAIGHT', 0, 1))
-            outflow_list.append(('STRAIGHT', 1, 0))
-            outflow_list.append(('RIGHT', 0, 3))
-            outflow_list.append(('RIGHT', 1, 2))
-        elif self.phase == 2:
-            outflow_list.append(('STRAIGHT', 1, 0))
-            outflow_list.append(('LEFT', 1, 3))
-            outflow_list.append(('RIGHT', 1, 2))
-            outflow_list.append(('RIGHT', 3, 1))
-        elif self.phase == 3:
-            outflow_list.append(('STRAIGHT', 2, 3))
-            outflow_list.append(('LEFT', 2, 1))
-            outflow_list.append(('RIGHT', 2, 0))
-            outflow_list.append(('RIGHT', 1, 2))
-        elif self.phase == 4:
-            outflow_list.append(('STRAIGHT', 2, 3))
-            outflow_list.append(('STRAIGHT', 3, 2))
-            outflow_list.append(('RIGHT', 2, 0))
-            outflow_list.append(('RIGHT', 3, 1))
-        elif self.phase == 5:
-            outflow_list.append(('STRAIGHT', 3, 2))
-            outflow_list.append(('LEFT', 3, 0))
-            outflow_list.append(('RIGHT', 3, 1))
-            outflow_list.append(('RIGHT', 0, 3))
+        outflow_list = setup_outflow(self.tick)
 
         # Make an outflow and remove the cars in the queue.
         new_wait_outflow = [[0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0]]
@@ -228,37 +240,19 @@ class Crossroad:
                     remain_cars[p][q] += phase_inflow[p][q]
 
             # Setup the outflow
-            outflow_list = []
             if t < i:
-                outflow_list.append(('STRAIGHT', 0, 1))
-                outflow_list.append(('LEFT', 0, 2))
-                outflow_list.append(('RIGHT', 0, 3))
-                outflow_list.append(('RIGHT', 2, 0))
+                phase = 0
             elif t < i + j:
-                outflow_list.append(('STRAIGHT', 0, 1))
-                outflow_list.append(('STRAIGHT', 1, 0))
-                outflow_list.append(('RIGHT', 0, 3))
-                outflow_list.append(('RIGHT', 1, 2))
+                phase = 1
             elif t < i + j + k:
-                outflow_list.append(('STRAIGHT', 1, 0))
-                outflow_list.append(('LEFT', 1, 3))
-                outflow_list.append(('RIGHT', 1, 2))
-                outflow_list.append(('RIGHT', 3, 1))
+                phase = 2
             elif t < i + j + k + l:
-                outflow_list.append(('STRAIGHT', 2, 3))
-                outflow_list.append(('LEFT', 2, 1))
-                outflow_list.append(('RIGHT', 2, 0))
-                outflow_list.append(('RIGHT', 1, 2))
+                phase = 3
             elif t < i + j + k + l + m:
-                outflow_list.append(('STRAIGHT', 2, 3))
-                outflow_list.append(('STRAIGHT', 3, 2))
-                outflow_list.append(('RIGHT', 2, 0))
-                outflow_list.append(('RIGHT', 3, 1))
+                phase = 4
             else:
-                outflow_list.append(('STRAIGHT', 3, 2))
-                outflow_list.append(('LEFT', 3, 0))
-                outflow_list.append(('RIGHT', 3, 1))
-                outflow_list.append(('RIGHT', 0, 3))
+                phase = 5
+            outflow_list = setup_outflow(phase)
 
             # Make an outflow
             new_wait_outflow = [[0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0],
