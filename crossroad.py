@@ -7,7 +7,50 @@ from Car import Car
 
 
 class Crossroad:
+    """
+    A class for representing the crossroad.
+
+    Attributes
+    ----------
+    cross_type : int
+        Decision making style of the crossroad. 0 = Reactive, 1 = Proactive, 2 = Omniscient.
+    tick : int
+        Current tick in the simulation.
+    phase : int
+        Current phase in the simulation.
+    total_delay : int
+        Total delayed ticks of passed cars through the simulation.
+    total_cars : int
+        Total passed cars through the simulation.
+    config : dict
+        Configuration of the simulation.
+    cars : list[list[Car]]
+        Queue of the cars that waiting in the crossroad.
+    num_cars : list[list[int]]
+        Number of cars that waiting in the crossroad.
+    wait_outflow : list[list[float]]
+        list for Residuals of outflow values.
+    flow_data : list[list[int]]
+        Flow data for using the simulation. These values are considered as the inflow of the past for cross_type 0.
+    raw_flow_data : list[list[float]]
+        Raw flow data that was used for making the flow data. In the simulation, it is considered as the average inflow of the cars.
+
+    Methods
+    ----------
+    inflow(start_tick=-1, length=1, raw=False)
+        Get the inflow data from start_tick to start_tick+length.
+    update()
+        Update the crossroad for a tick.
+    decision_making()
+        Makes a decision for controlling the length of each phase based on the cross_type.
+    run()
+        Make a simulation based on the configuration and make a csv file for logging the situation.
+    """
     def __init__(self, config, cross_type=1):
+        """
+        :param config: Configuration file of the crossroad.
+        :param cross_type: Decision making style. 0 = Reactive, 1 = Proactive, 2 = Omniscient
+        """
         self.cross_type = cross_type
         self.phase = 0
         self.total_delay = 0
@@ -56,6 +99,14 @@ class Crossroad:
                 self.raw_flow_data.append(new_row)
 
     def inflow(self, start_tick=-1, length=1, raw=False):
+        """
+        Get the inflow data from start_tick to start_tick+length.
+
+        :param start_tick: the tick of the inflow
+        :param length: The length of the inflow
+        :param raw: Boolean value for checking the inflow type. If true, returns the raw_flow_data, else, return flow_data
+        :return: Returns the inflow list[list[int]] of given parameters
+        """
         if start_tick == -1:
             start_tick = self.tick
         tick = start_tick % self.config['TOTAL_TICKS_PER_DAY']
@@ -73,6 +124,11 @@ class Crossroad:
         return ans
 
     def update(self):
+        """
+        Update the crossroad for a tick.
+
+        :return: None
+        """
         current_inflow = self.inflow(raw=False)
         for i in range(4):
             for j in range(4):
@@ -131,6 +187,11 @@ class Crossroad:
         self.wait_outflow = new_wait_outflow
 
     def decision_making(self):
+        """
+        Makes a decision for controlling the length of each phase based on the cross_type.
+
+        :return: The list of the integer with 6 elements. The each value represents the length of each phase.
+        """
         decision_length = int(self.config['DECISION_LENGTH'])
 
         if self.cross_type != 0:
@@ -258,6 +319,11 @@ class Crossroad:
         return ans
 
     def run(self):
+        """
+        Make a simulation based on the configuration and make a csv file for logging the situation.
+
+        :return: None
+        """
         max_frame = int(self.config['MAX_FRAME'])
         decision_length = int(self.config['DECISION_LENGTH'])
         phase_length = []
@@ -265,9 +331,15 @@ class Crossroad:
 
         log_file = open('log_' + str(self.cross_type) + '.csv', 'w', newline='')
         log_writer = csv.writer(log_file)
+        header = ['tick', 'phase', 'delayed', 'passed']
+        for i in range(4):
+            for j in range(4):
+                header.append(str(i) + '->' + str(j))
+        log_writer.writerow(header)
 
         dm_file = open('dm_' + str(self.cross_type) + '.csv', 'w', newline='')
         dm_writer = csv.writer(dm_file)
+        log_writer.writerow(['tick', 'phase0', 'phase1', 'phase2', 'phase3', 'phase4', 'phase5'])
 
         while self.tick < max_frame:
             if self.tick % decision_length == 0:

@@ -4,9 +4,15 @@ import random
 import numpy as np
 
 
-def generate_flow_data():
+def generate_flow_data(config_file='config.txt'):
+    """
+    Make a flow data on the configuration file, and record it into the csv file.
+
+    :param config_file: The configuration file of the flow data.
+    :return: None.
+    """
     config = {}
-    with open('config.txt', 'r') as config_file:
+    with open(config_file, 'r') as config_file:
         config_lines = config_file.readlines()
         for config_line in config_lines:
             config_split = config_line.split(':')
@@ -57,6 +63,11 @@ def generate_flow_data():
 
     csv_file = open('raw_' + config['FLOW_DATA'], 'w', newline='')
     csv_writer = csv.writer(csv_file)
+    header = []
+    for i in range(4):
+        for j in range(4):
+            header.append(str(i) + '->' + str(j))
+    csv_writer.writerow(header)
     for k in range(total_ticks_per_day):
         value = []
         for i in range(4):
@@ -110,6 +121,7 @@ def generate_flow_data():
 
     csv_file = open(config['FLOW_DATA'], 'w', newline='')
     csv_writer = csv.writer(csv_file)
+    csv_writer.writerow(header)
     for k in range(total_ticks_per_day):
         value = []
         for i in range(4):
