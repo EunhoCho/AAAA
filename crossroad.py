@@ -199,7 +199,7 @@ class Crossroad:
                     self.num_cars[i][j] += 1
 
         # Setup the outflow based on the phase.
-        outflow_list = setup_outflow(self.tick)
+        outflow_list = setup_outflow(self.phase)
 
         # Make an outflow and remove the cars in the queue.
         new_wait_outflow = [[0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0]]
@@ -346,11 +346,11 @@ class Crossroad:
 
         ans = [0, 0, 0, 0, 0, 0]
         minimum = -1
-        for i in range(0, decision_length + 1):
-            for j in range(0, decision_length - i + 1):
-                for k in range(0, decision_length - i - j + 1):
-                    for l in range(0, decision_length - i - j - k + 1):
-                        for m in range(0, decision_length - i - j - k - l + 1):
+        for i in range(1, decision_length - 4):
+            for j in range(1, decision_length - i - 3):
+                for k in range(1, decision_length - i - j - 2):
+                    for l in range(1, decision_length - i - j - k - 1):
+                        for m in range(1, decision_length - i - j - k - l):
                             decision = [i, j, k, l, m, decision_length - i - j - k - l - m]
                             num_cars = self.check_decision(decision, start_tick)
 

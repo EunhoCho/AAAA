@@ -11,7 +11,7 @@ def generate_inflow(raw_flow, name=None):
     :param name: The name of the csv file that contains the inflow
     :return: List of generated inflow - tick * 4 * 4 matrix
     """
-    total_ticks = len(raw_flow)
+    total_ticks = len(raw_flow[0][1])
     flow = [[], [], [], []]
     for i in range(4):
         for j in range(4):
@@ -21,27 +21,17 @@ def generate_inflow(raw_flow, name=None):
                 for k in range(total_ticks):
                     value = raw_flow[i][j][k]
 
-                    residual += value - int(value)
-                    residual_val = int(residual)
-                    residual -= residual_val
+                    residual += value
 
-                    if residual > 0:
-                        random_val = np.random.choice([0, 1], 1, p=[1 - residual, residual])[0]
-                        residual -= random_val
-                    elif residual < 0:
-                        random_val = np.random.choice([-1, 0], 1, p=[- residual, 1 + residual])[0]
-                        residual -= random_val
+                    if residual < 0:
+                        flow_val = 0
                     else:
-                        random_val = 0
+                        flow_val = int(residual)
+                        residual -= int(residual)
 
-                    flow_val = int(value) + residual_val + random_val
-
-                    if flow_val < 0:
-                        residual += random_val
-                        flow_val -= random_val
-                    if flow_val < 0:
-                        residual += residual_val
-                        flow_val -= residual_val
+                        if residual > 0:
+                            random_val = np.random.choice([0, 1], 1, p=[1 - residual, residual])[0]
+                            residual -= random_val
 
                     route_flow.append(flow_val)
 
