@@ -79,6 +79,8 @@ class Crossroad:
 
     Methods
     ----------
+    read_flow(file)
+        Change the inflow based on the file
     inflow(start_tick=-1, length=1, raw=False)
         Get the inflow data from start_tick to start_tick+length.
     update()
@@ -88,6 +90,7 @@ class Crossroad:
     run()
         Make a simulation based on the configuration and make a csv file for logging the situation.
     """
+
     def __init__(self, config, cross_type=1):
         """
         :param config: Configuration file of the crossroad.
@@ -127,14 +130,7 @@ class Crossroad:
             'SECONDS_PER_TICK']
 
         # Read the flow data
-        with open(self.config['FLOW_DATA'], "r") as f:
-            flow_reader = csv.reader(f)
-            self.flow_data = []
-            for row in flow_reader:
-                new_row = []
-                for i in range(len(row)):
-                    new_row.append(int(row[i]))
-                self.flow_data.append(new_row)
+        self.read_flow(self.config['FLOW_DATA'])
 
         # Read the raw flow data
         with open('raw_' + self.config['FLOW_DATA'], "r") as f:
@@ -145,6 +141,23 @@ class Crossroad:
                 for i in range(len(row)):
                     new_row.append(float(row[i]))
                 self.raw_flow_data.append(new_row)
+
+    def read_flow(self, file):
+        """
+        Change the inflow based on the file
+
+        :param file: The inflow data file.
+        :return: None.
+        """
+        with open(file, "r") as f:
+            flow_reader = csv.reader(f)
+            self.flow_data = []
+            for i, row in enumerate(flow_reader):
+                if i != 0:
+                    new_row = []
+                    for j in range(len(row)):
+                        new_row.append(int(row[j]))
+                    self.flow_data.append(new_row)
 
     def inflow(self, start_tick=-1, length=1, raw=False):
         """
@@ -215,7 +228,7 @@ class Crossroad:
         :param start_tick: The tick that starts the evaluate decision.
         :return: Returns the value of evaluation metric - sum of remained cars on each tick in one decision length.
         """
-        decision_length = self.config['decision_length']
+        decision_length = int(self.config['DECISION_LENGTH'])
 
         remain_cars = copy.deepcopy(self.num_cars)
         wait_outflow = copy.deepcopy(self.wait_outflow)
@@ -351,7 +364,7 @@ class Crossroad:
         """
         Make a simulation based on the configuration and make a csv file for logging the situation.
 
-        :return: None
+        :return: total delayed time and total number of cars during the simulation.
         """
         max_frame = int(self.config['MAX_FRAME'])
         decision_length = int(self.config['DECISION_LENGTH'])
@@ -395,3 +408,5 @@ class Crossroad:
 
         log_file.close()
         dm_file.close()
+
+        return self.total_delay, self.total_cars

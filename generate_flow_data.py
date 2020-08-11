@@ -1,17 +1,17 @@
 import csv
-import random
 
 import numpy as np
 
 
-def generate_inflow(raw_flow):
+def generate_inflow(raw_flow, name=None):
     """
-    Generate the discrete inflow based on the raw inflow.
+    Generate the discrete inflow based on the raw inflow, and store into the csv file
 
     :param raw_flow: Average inflow of each tick / road
-    :return:
+    :param name: The name of the csv file that contains the inflow
+    :return: List of generated inflow - tick * 4 * 4 matrix
     """
-    total_ticks = len(raw_flow[i][j])
+    total_ticks = len(raw_flow)
     flow = [[], [], [], []]
     for i in range(4):
         for j in range(4):
@@ -48,6 +48,22 @@ def generate_inflow(raw_flow):
                 flow[i].append(route_flow)
             else:
                 flow[i].append(None)
+
+    if name is not None:
+        csv_file = open(name, 'w', newline='')
+        csv_writer = csv.writer(csv_file)
+
+        for k in range(total_ticks):
+            value = []
+            for i in range(4):
+                for j in range(4):
+                    if i == j:
+                        value.append(0)
+                    else:
+                        value.append(flow[i][j][k])
+            csv_writer.writerow(value)
+
+        csv_file.close()
 
     return flow
 
@@ -111,11 +127,7 @@ def generate_flow_data(config_file='config.txt'):
 
     csv_file = open('raw_' + config['FLOW_DATA'], 'w', newline='')
     csv_writer = csv.writer(csv_file)
-    header = []
-    for i in range(4):
-        for j in range(4):
-            header.append(str(i) + '->' + str(j))
-    csv_writer.writerow(header)
+
     for k in range(total_ticks_per_day):
         value = []
         for i in range(4):
@@ -127,22 +139,7 @@ def generate_flow_data(config_file='config.txt'):
         csv_writer.writerow(value)
     csv_file.close()
 
-    flow = generate_inflow(raw_flow, total_ticks_per_day)
-
-    csv_file = open(config['FLOW_DATA'], 'w', newline='')
-    csv_writer = csv.writer(csv_file)
-    csv_writer.writerow(header)
-    for k in range(total_ticks_per_day):
-        value = []
-        for i in range(4):
-            for j in range(4):
-                if i == j:
-                    value.append(0)
-                else:
-                    value.append(flow[i][j][k])
-        csv_writer.writerow(value)
-
-    csv_file.close()
+    generate_inflow(raw_flow, config['FLOW_DATA'])
 
 
 if __name__ == '__main__':
