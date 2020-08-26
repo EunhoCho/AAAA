@@ -70,8 +70,6 @@ class Crossroad:
         Queue of the cars that waiting in the crossroad.
     num_cars : list[list[int]]
         Number of cars that waiting in the crossroad.
-    wait_outflow : list[list[float]]
-        list for Residuals of outflow values.
     flow_data : list[list[int]]
         Flow data for using the simulation. These values are considered as the inflow of the past for cross_type 0.
     raw_flow_data : list[list[float]]
@@ -106,7 +104,7 @@ class Crossroad:
         self.tick = 0
         self.cars = [[None, [], [], []], [[], None, [], []], [[], [], None, []], [[], [], [], None]]
         self.num_cars = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
-        self.wait_outflow = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
+        self.residual = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
 
         # Read the configuration.
         with open(config, 'r') as config_file:
@@ -119,6 +117,7 @@ class Crossroad:
 
         # Setup the configuration.
         self.tick = int(self.config['START_TICK'])
+        self.config['DECISION_LENGTH'] = int(self.config['DECISION_LENGTH'])
         self.config['SECONDS_PER_TICK'] = int(self.config['SECONDS_PER_TICK'])
         self.config['TOTAL_TICKS_PER_HOUR'] = int(60 * 60 / self.config['SECONDS_PER_TICK'])
         self.config['TOTAL_TICKS_PER_DAY'] = self.config['TOTAL_TICKS_PER_HOUR'] * 24
@@ -130,6 +129,7 @@ class Crossroad:
             'SECONDS_PER_TICK']
 
         # Read the flow data
+        self.flow_data = []
         self.read_flow(self.config['FLOW_DATA'])
 
         # Read the raw flow data
@@ -151,7 +151,6 @@ class Crossroad:
         """
         with open(file, "r") as f:
             flow_reader = csv.reader(f)
-            self.flow_data = []
             for i, row in enumerate(flow_reader):
                 if i != 0:
                     new_row = []
@@ -191,9 +190,12 @@ class Crossroad:
         :return: None
         """
         # Inflow the cars based on the inflow data
+        current_raw_inflow = self.inflow(raw=True)
         current_inflow = self.inflow(raw=False)
         for i in range(4):
             for j in range(4):
+                self.residual[i][j] += current_raw_inflow[i][j]
+                self.residual[i][j] -= current_inflow[i][j]
                 for k in range(current_inflow[i][j]):
                     self.cars[i][j].append(Car(self.tick))
                     self.num_cars[i][j] += 1
@@ -202,10 +204,8 @@ class Crossroad:
         outflow_list = setup_outflow(self.phase)
 
         # Make an outflow and remove the cars in the queue.
-        new_wait_outflow = [[0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0]]
         for outflow in outflow_list:
             outflow_value = self.config['OUTFLOW_' + outflow[0]]
-            outflow_value += self.wait_outflow[outflow[1]][outflow[2]]
             while outflow_value >= 1:
                 target_queue = self.cars[outflow[1]][outflow[2]]
                 if len(target_queue) == 0:
@@ -215,10 +215,6 @@ class Crossroad:
                 self.num_cars[outflow[1]][outflow[2]] -= 1
                 self.total_delay += self.tick - target.tick
                 self.total_cars += 1
-
-            if outflow_value > 0:
-                new_wait_outflow[outflow[1]][outflow[2]] = outflow_value
-        self.wait_outflow = new_wait_outflow
 
     def check_decision(self, decision, start_tick):
         """
@@ -231,8 +227,6 @@ class Crossroad:
         decision_length = int(self.config['DECISION_LENGTH'])
 
         remain_cars = copy.deepcopy(self.num_cars)
-        wait_outflow = copy.deepcopy(self.wait_outflow)
-
         num_cars = 0
         i = decision[0]
         j = decision[1]
@@ -268,12 +262,8 @@ class Crossroad:
             outflow_list = setup_outflow(phase)
 
             # Make an outflow
-            new_wait_outflow = [[0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0],
-                                [0.0, 0.0, 0.0, 0.0]]
             for outflow in outflow_list:
                 outflow_value = self.config['OUTFLOW_' + outflow[0]]
-                outflow_value += wait_outflow[outflow[1]][outflow[2]]
-
                 if self.cross_type == 1:
                     if remain_cars[outflow[1]][outflow[2]] > outflow_value:
                         remain_cars[outflow[1]][outflow[2]] -= outflow_value
@@ -285,10 +275,6 @@ class Crossroad:
                             break
                         outflow_value -= 1
                         remain_cars[outflow[1]][outflow[2]] -= 1
-
-                    if outflow_value > 0:
-                        new_wait_outflow[outflow[1]][outflow[2]] = outflow_value
-                wait_outflow = new_wait_outflow
 
             for p in range(4):
                 for q in range(4):
@@ -302,7 +288,10 @@ class Crossroad:
 
         :return: The list of the integer with 6 elements. The each value represents the length of each phase.
         """
-        decision_length = int(self.config['DECISION_LENGTH'])
+        if self.cross_type == 3:
+            return self.prism_decision_making()
+
+        decision_length = self.config['DECISION_LENGTH']
 
         if self.cross_type != 0:
             start_tick = self.tick
@@ -312,28 +301,17 @@ class Crossroad:
             ans = []
             residual = 0
             for i in range(6):
-                value = int(div)
-                residual += div - int(div)
-
-                residual_val = int(residual)
-                residual -= int(residual)
+                residual += div
 
                 if residual > 0:
+                    value = int(residual)
+                    residual -= value
+
                     random_val = np.random.choice([0, 1], 1, p=[1 - residual, residual])[0]
                     residual -= random_val
-                elif residual < 0:
-                    random_val = np.random.choice([-1, 0], 1, p=[- residual, 1 + residual])[0]
-                    residual -= random_val
-                else:
-                    random_val = 0
 
-                value += residual_val + random_val
-                if value < 0:
-                    value -= random_val
-                    residual += random_val
-                if value < 0:
-                    value -= residual_val
-                    residual += residual_val
+                else:
+                    value = 0
 
                 ans.append(value)
 
@@ -410,3 +388,167 @@ class Crossroad:
         dm_file.close()
 
         return self.total_delay, self.total_cars
+
+    def prism_decision_making(self):
+        decision_length = self.config['DECISION_LENGTH']
+        prism_model_file = open('crossroad.sm', 'w')
+        prism_model_file.write('const int decision_length = ' + str(self.config['DECISION_LENGTH']) + ';\n')
+
+        clk_module = ["module clk\n", "\ttime : [-1..decision_length + 1] init 0;\n", "\treadyToTick : bool init true;\n",
+                      "\t[tick] readyToTick & time < decision_length + 1 -> 1 : (time' = time+ 1) & (readyToTick' = false);\n",
+                      "\t[toe] !readyToTick -> 1 : (readyToTick'=true);\n", "endmodule\n\n", 'rewards "cars"\n',
+                      "\t[toe] true : cars01 + cars02 + cars03 + cars10 + cars12 + cars13 + cars20 + cars21 + cars23 + cars30 + cars31 + cars32;\n",
+                      "endrewards\n\n"]
+        prism_model_file.writelines(clk_module)
+
+        cur_residual = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
+        for i in range(4):
+            for j in range(4):
+                cur_residual[i][j] = self.residual[i][j]
+
+        raw_inflows = []
+        for time in range(decision_length):
+            raw_inflows.append(self.inflow(start_tick=self.tick + time, raw=True))
+
+        for i in range(4):
+            for j in range(4):
+                if i != j:
+                    class env_node:
+                        def __init__(self, residual, time, value):
+                            self.residual = residual
+                            self.time = time
+                            self.value = value
+                            self.prob1 = 1
+                            self.child1 = -1
+                            self.prob2 = 0
+                            self.child2 = -1
+
+                    env_nodes = [env_node(cur_residual[i][j], -1, 0)]
+
+                    k = 0
+                    while k != len(env_nodes):
+                        target_node = env_nodes[k]
+                        time = target_node.time + 1
+                        residual = target_node.residual
+
+                        if time == decision_length:
+                            break
+
+                        target_inflow = raw_inflows[time][i][j]
+                        residual += target_inflow
+
+                        if residual < 0:
+                            env_nodes.append(env_node(residual, time, 0))
+                            target_node.child1 = len(env_nodes) - 1
+                        else:
+                            value = int(residual)
+                            residual -= int(residual)
+
+                            env_nodes.append(env_node(residual, time, value))
+                            target_node.prob1 = 1 - residual
+                            target_node.child1 = len(env_nodes) - 1
+
+                            env_nodes.append(env_node(residual - 1, time, value + 1))
+                            target_node.prob2 = residual
+                            target_node.child2 = len(env_nodes) - 1
+
+                        k += 1
+
+                    env_module = ["module env" + str(i) + str(j) + "\n", "\ts" + str(i) + str(j) + " : [0.." + str(len(env_nodes) - 1) + "] init 0;\n"]
+                    for k in range(len(env_nodes)):
+                        node = env_nodes[k]
+                        if node.time == decision_length - 1:
+                            break
+
+                        if node.prob2 == 0:
+                            env_module.append("\t[tick] s" + str(i) + str(j) + " = " + str(k) + " -> 1 : (s" + str(i) + str(j) + "' = " + str(node.child1) + ");\n")
+                        else:
+                            env_module.append("\t[tick] s" + str(i) + str(j) + " = " + str(k) + " -> " + str(node.prob1) + " : (s" + str(i) + str(j) + "' = " + str(node.child1) + ") + " + str(node.prob2) + " : (s" + str(i) + str(j) + "' = " + str(node.child2) + ");\n")
+
+                    env_module.append("endmodule\n\n")
+                    env_module.append("formula inflow" + str(i) + str(j) + " = (s" + str(i) + str(j) + " = 0 ? 0 : 0)\n")
+
+                    for k in range(1, len(env_nodes) - 1):
+                        node = env_nodes[k]
+                        env_module.append(" + (s" + str(i) + str(j) + " = " + str(k) + " ? " + str(node.value) + " : 0)\n")
+
+                    node = env_nodes[-1]
+                    env_module.append(" + (s" + str(i) + str(j) + " = " + str(k) + " ? " + str(node.value) + " : 0);\n\n")
+
+                    prism_model_file.writelines(env_module)
+
+        sys_module = ["module sys\n", "\treadyToInflow : bool init false;\n", "\treadyToOutflow : bool init false;\n"]
+        for i in range(4):
+            for j in range(4):
+                if i != j:
+                    sys_module.append("\tcars" + str(i) + str(j) + " : int init " + str(self.num_cars[i][j]) + ";\n")
+
+        sys_module.append("\n\t[tick] !readyToInflow & !readyToOutflow -> 1 : (readyToInflow' = true);\n")
+
+        inflow_line = "\t[] readyToInflow -> 1 : (readyToInflow' = false) & (readyToOutflow' = true)"
+        for i in range(4):
+            for j in range(4):
+                if i != j:
+                    inflow_line += " & (cars" + str(i) + str(j) + "' = cars" + str(i) + str(j) + " + inflow" + str(i) + str(j) + ")"
+        inflow_line += ";\n"
+
+        outflow_line = "\t[tack] readyToOutflow -> 1 : (readyToOutflow' = false)"
+        for i in range(4):
+            for j in range(4):
+                if i != j:
+                    outflow_line += " & (cars" + str(i) + str(j) + "' = cars" + str(i) + str(j) + " - outflow" + str(i) + str(j) + ")"
+        outflow_line += ";\n"
+
+        sys_module.append(inflow_line)
+        sys_module.append(outflow_line)
+        sys_module.append("endmodule\n\n")
+        prism_model_file.writelines(sys_module)
+
+        tactic_module = ["module tactic\n", "\tphase : [0..5] init 0;\n",
+                         "\treadyToAdvance : bool init false;\n", "\treadyToStart : bool init false;\n"
+                         "\t[tick] !readyToAdvance & !readyToStart -> 1 : (readyToAdvance' = true);\n\n"
+                         "\t[] readyToAdvance & lastTick = 0 -> 1 : (phase' = phase + 1) & (readyToAdvance' = false) & (readyToStart' = true);\n",
+                         "\t[] readyToAdvance & lastTick > 0 -> (phase' = phase + 1) & (readyToAdvance' = false) & (readyToStart' = true);\n",
+                         "\t[] readyToAdvance & lastTick > 0 -> (phase' = phase) & (readyToAdvance' = false) & (readyToStart' = true);\n",
+                         "\t[tack] readyToStart -> 1 : (readyToStart' = false);\n"
+                         "endmodule\n\n", "formula lastTick = decision_length - time + phase - 5;\n\n"]
+        prism_model_file.writelines(tactic_module)
+
+        # TODO : Outflow
+        outflows = [[None,
+                     ["STRAIGHT", [True, True, False, False, False, False]],
+                     ["LEFT", [True, False, False, False, False, False]],
+                     ["RIGHT", [True, True, False, False, False, True]]],
+                    [["STRAIGHT", [False, True, True, False, False, False]],
+                     None,
+                     ["RIGHT", [False, True, True, True, False, False]],
+                     ["LEFT", [False, False, True, False, False, False]]],
+                    [["RIGHT", [True, False, False, True, True, False]],
+                     ["LEFT", [False, False, False, True, False, False]],
+                     None,
+                     ["STRAIGHT", [False, False, False, True, True, False]]],
+                    [["LEFT", [False, False, False, False, False, True]],
+                     ["RIGHT", [False, False, True, False, True, True]],
+                     ["STRAIGHT", [False, False, False, False, True, True]],
+                     None]]
+        for i in range(4):
+            for j in range(4):
+                if i != j:
+                    single_outflow = outflows[i][j]
+                    outflow_formula = ["formula outflow" + str(i) + str(j) + " = "]
+                    for k in range(6):
+                        if k != 0:
+                            outflow_formula.append("+ ")
+                        outflow_formula.append("(phase = " + str(k) + "? ")
+                        if single_outflow[1][k]:
+                            outflow_formula.append(str(int(self.config["OUTFLOW_" + single_outflow[0]])))
+                        else:
+                            outflow_formula.append("0")
+                        outflow_formula.append(" : 0)")
+                        if k == 5:
+                            outflow_formula.append(";")
+                        outflow_formula.append("\n")
+                    outflow_formula.append("\n")
+                    prism_model_file.writelines(outflow_formula)
+
+        prism_model_file.close()
