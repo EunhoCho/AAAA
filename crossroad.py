@@ -152,11 +152,10 @@ class Crossroad:
         with open(file, "r") as f:
             flow_reader = csv.reader(f)
             for i, row in enumerate(flow_reader):
-                if i != 0:
-                    new_row = []
-                    for j in range(len(row)):
-                        new_row.append(int(row[j]))
-                    self.flow_data.append(new_row)
+                new_row = []
+                for j in range(len(row)):
+                    new_row.append(int(row[j]))
+                self.flow_data.append(new_row)
 
     def inflow(self, start_tick=-1, length=1, raw=False):
         """
@@ -169,17 +168,31 @@ class Crossroad:
         """
         if start_tick == -1:
             start_tick = self.tick
-        tick = start_tick % self.config['TOTAL_TICKS_PER_DAY']
 
-        ans = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
-        for i in range(tick, tick + length):
+        if length == 1:
+            ans = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
+            tick = start_tick % self.config['TOTAL_TICKS_PER_DAY']
             if raw:
-                flow_tick = self.raw_flow_data[i]
+                flow_tick = self.raw_flow_data[tick]
             else:
-                flow_tick = self.flow_data[i]
+                flow_tick = self.flow_data[tick]
             for j in range(4):
                 for k in range(4):
                     ans[j][k] += flow_tick[j * 4 + k]
+
+        else:
+            ans = []
+            for i in range(start_tick, start_tick + length):
+                ans_tick = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
+                tick = i % self.config['TOTAL_TICKS_PER_DAY']
+                if raw:
+                    flow_tick = self.raw_flow_data[tick]
+                else:
+                    flow_tick = self.flow_data[tick]
+                for j in range(4):
+                    for k in range(4):
+                        ans_tick[j][k] += flow_tick[j * 4 + k]
+                ans.append(ans_tick)
 
         return ans
 
@@ -216,12 +229,12 @@ class Crossroad:
                 self.total_delay += self.tick - target.tick
                 self.total_cars += 1
 
-    def check_decision(self, decision, start_tick):
+    def check_decision(self, decision, inflow):
         """
         Evaluate the decision based on the cross_type
 
         :param decision: A list of integer that the sum is decision_length. Each element represents the length of phase.
-        :param start_tick: The tick that starts the evaluate decision.
+        :param inflow:
         :return: Returns the value of evaluation metric - sum of remained cars on each tick in one decision length.
         """
         decision_length = int(self.config['DECISION_LENGTH'])
@@ -236,12 +249,7 @@ class Crossroad:
 
         for t in range(decision_length):
 
-            # Make a inflow
-            if self.cross_type == 1:
-                phase_inflow = self.inflow(start_tick=start_tick + t, raw=True)
-            else:
-                phase_inflow = self.inflow(start_tick=start_tick + t, raw=False)
-
+            phase_inflow = inflow[t]
             for p in range(4):
                 for q in range(4):
                     remain_cars[p][q] += phase_inflow[p][q]
@@ -288,39 +296,47 @@ class Crossroad:
 
         :return: The list of the integer with 6 elements. The each value represents the length of each phase.
         """
-        if self.cross_type == 3:
+        if self.cross_type == 5:
             return self.prism_decision_making()
 
         decision_length = self.config['DECISION_LENGTH']
 
-        if self.cross_type != 0:
-            start_tick = self.tick
-        elif self.tick == 0:
-            # Make a default decision as each phase has the same value
-            div = decision_length / 6
-            ans = []
-            residual = 0
-            for i in range(6):
-                residual += div
+        if self.cross_type == 4 or (self.cross_type == 1 and self.tick == 0):
+            residual = decision_length % 6
+            value = int(decision_length / 6)
+            ans = [value] * 6
+            if residual == 0:
+                return ans
 
-                if residual > 0:
-                    value = int(residual)
-                    residual -= value
+            ans[1] += 1
+            if residual == 1:
+                return ans
 
-                    random_val = np.random.choice([0, 1], 1, p=[1 - residual, residual])[0]
-                    residual -= random_val
+            ans[2] += 1
+            if residual == 2:
+                return ans
 
-                else:
-                    value = 0
+            ans[0] += 1
+            if residual == 3:
+                return ans
 
-                ans.append(value)
+            ans[4] += 1
+            if residual == 4:
+                return ans
 
-            print(ans)
-
+            ans[5] += 1
             return ans
 
-        else:
-            start_tick = self.tick - decision_length
+        if self.cross_type == 3:
+            samples = []
+            for i in range(100):
+                samples.append(self.env_sampling())
+        elif self.cross_type == 0:
+            target_inflow = self.inflow(self.tick, decision_length, raw=False)
+        elif self.cross_type == 1:
+            target_inflow = self.inflow(self.tick - decision_length, decision_length, raw=False)
+        elif self.cross_type == 2:
+            target_inflow = self.inflow(self.tick, decision_length, raw=True)
 
         ans = [0, 0, 0, 0, 0, 0]
         minimum = -1
@@ -330,7 +346,14 @@ class Crossroad:
                     for l in range(1, decision_length - i - j - k - 1):
                         for m in range(1, decision_length - i - j - k - l):
                             decision = [i, j, k, l, m, decision_length - i - j - k - l - m]
-                            num_cars = self.check_decision(decision, start_tick)
+
+                            if self.cross_type == 3:
+                                num_cars = 0
+                                for sample in samples:
+                                    num_cars += self.check_decision(decision, sample)
+
+                            else:
+                                num_cars = self.check_decision(decision, target_inflow)
 
                             if minimum == -1 or num_cars < minimum:
                                 ans = decision
@@ -361,6 +384,13 @@ class Crossroad:
         dm_writer = csv.writer(dm_file)
         log_writer.writerow(['tick', 'phase0', 'phase1', 'phase2', 'phase3', 'phase4', 'phase5'])
 
+        x_numbers = []
+        for i in range(144):
+            x_numbers.append(i / 6)
+        y_numbers = []
+        y_number = 0
+        num_y_number = 0
+
         while self.tick < max_frame:
             if self.tick % decision_length == 0:
                 phase_length = self.decision_making()
@@ -381,13 +411,60 @@ class Crossroad:
             log_writer.writerow(write_row)
             print(self.tick, self.phase, self.total_delay, self.total_cars, self.num_cars)
 
+            sum_num_cars = 0
+            for i in range(4):
+                for j in range(4):
+                    sum_num_cars += self.num_cars[i][j]
+
+            y_number += sum_num_cars
+            num_y_number += 1
+
+            if self.tick == int(max_frame / 144 * (len(y_numbers) + 1)):
+                y_numbers.append(y_number / num_y_number)
+                y_number = 0
+                num_y_number = 0
+
             phase_tick += 1
             self.tick += 1
+
+        y_numbers.append(y_number / num_y_number)
 
         log_file.close()
         dm_file.close()
 
-        return self.total_delay, self.total_cars
+        return self.total_delay, self.total_cars, x_numbers, y_numbers
+
+    def env_sampling(self):
+        decision_length = self.config['DECISION_LENGTH']
+        cur_residual = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
+        for i in range(4):
+            for j in range(4):
+                cur_residual[i][j] = self.residual[i][j]
+
+        raw_inflows = []
+        for time in range(decision_length):
+            raw_inflows.append(self.inflow(start_tick=self.tick + time, raw=True))
+
+        sample_inflow = []
+        for k in range(decision_length):
+            inflow = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
+            for i in range(4):
+                for j in range(4):
+                    if i != j:
+                        cur_residual[i][j] += raw_inflows[k][i][j]
+                        if cur_residual[i][j] >= 0:
+                            inflow[i][j] += int(cur_residual[i][j])
+                            cur_residual[i][j] -= inflow[i][j]
+
+                            if cur_residual[i][j] > 0:
+                                random_val = np.random.choice([0, 1], 1, p=[1 - cur_residual[i][j], cur_residual[i][j]])[0]
+                                cur_residual[i][j] -= random_val
+
+                                inflow[i][j] += random_val
+                                cur_residual[i][j] -= random_val
+            sample_inflow.append(inflow)
+
+        return sample_inflow
 
     def prism_decision_making(self):
         decision_length = self.config['DECISION_LENGTH']

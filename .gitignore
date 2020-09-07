@@ -217,3 +217,5 @@ log_*.csv
 dm_*.csv
 flow_*.csv
 crossroad.sm
+inflow.png
+waiting.png

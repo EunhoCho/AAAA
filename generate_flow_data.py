@@ -1,6 +1,7 @@
 import csv
 
 import numpy as np
+from matplotlib import pyplot as plt
 
 
 def generate_inflow(raw_flow, name=None, start_tick=0, residual=None):
@@ -59,6 +60,36 @@ def generate_inflow(raw_flow, name=None, start_tick=0, residual=None):
             csv_writer.writerow(value)
 
         csv_file.close()
+
+    ticks = total_ticks / 24
+    x_values = range(24)
+    target_values = None
+    maximum = None
+
+    for i in range(4):
+        for j in range(4):
+            if i != j:
+                num = 0
+                y_values = []
+                l = 1
+                for k in range(total_ticks):
+                    num += flow[i][j][k]
+                    if int(l * ticks) == k:
+                        y_values.append(num)
+                        l += 1
+                        num = 0
+                y_values.append(num)
+
+                if target_values is None or sum(y_values) > maximum:
+                    target_values = y_values
+                    maximum = sum(y_values)
+
+    plt.plot(x_values, target_values)
+    plt.title('Time - Number of Inflow Cars')
+    plt.xlabel('Hour')
+    plt.ylabel('Number of Cars')
+    plt.savefig('inflow.png', dpi=300)
+    plt.close('all')
 
     return flow
 
