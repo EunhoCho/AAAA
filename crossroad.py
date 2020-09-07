@@ -142,6 +142,14 @@ class Crossroad:
                     new_row.append(float(row[i]))
                 self.raw_flow_data.append(new_row)
 
+        self.max_inflow = 0
+        for i in range(len(self.raw_flow_data)):
+            max_value = max(self.raw_flow_data[i])
+            if self.max_inflow < max_value:
+                self.max_inflow = max_value
+
+        self.max_inflow = int(self.max_inflow + 1)
+
     def read_flow(self, file):
         """
         Change the inflow based on the file
@@ -471,9 +479,12 @@ class Crossroad:
         prism_model_file = open('crossroad.sm', 'w')
         prism_model_file.write('const int decision_length = ' + str(self.config['DECISION_LENGTH']) + ';\n')
 
-        clk_module = ["module clk\n", "\ttime : [-1..decision_length + 1] init 0;\n", "\treadyToTick : bool init true;\n",
-                      "\t[tick] readyToTick & time < decision_length + 1 -> 1 : (time' = time+ 1) & (readyToTick' = false);\n",
-                      "\t[toe] !readyToTick -> 1 : (readyToTick'=true);\n", "endmodule\n\n", 'rewards "cars"\n',
+        clk_module = ["module clk\n", "\ttime : [-1..decision_length + 1] init 0;\n",
+                      "\treadyToTick : bool init true;\n", "\treadyToTack : bool init false;\n",
+                      "\t[tick] readyToTick & time < decision_length + 1 -> 1 : (time' = time+ 1) & (readyToTick' = false) & (readyToTack' = true);\n",
+                      "\t[tack] readyToTack -> 1 : (readyToTack' = false);"
+                      "\t[toe] !readyToTick & !readyToTack -> 1 : (readyToTick'= true);\n", "endmodule\n\n",
+                      'rewards "cars"\n',
                       "\t[toe] true : cars01 + cars02 + cars03 + cars10 + cars12 + cars13 + cars20 + cars21 + cars23 + cars30 + cars31 + cars32;\n",
                       "endrewards\n\n"]
         prism_model_file.writelines(clk_module)
@@ -531,26 +542,33 @@ class Crossroad:
 
                         k += 1
 
-                    env_module = ["module env" + str(i) + str(j) + "\n", "\ts" + str(i) + str(j) + " : [0.." + str(len(env_nodes) - 1) + "] init 0;\n"]
+                    env_module = ["module env" + str(i) + str(j) + "\n",
+                                  "\ts" + str(i) + str(j) + " : [0.." + str(len(env_nodes) - 1) + "] init 0;\n"]
                     for k in range(len(env_nodes)):
                         node = env_nodes[k]
                         if node.time == decision_length - 1:
                             break
 
                         if node.prob2 == 0:
-                            env_module.append("\t[tick] s" + str(i) + str(j) + " = " + str(k) + " -> 1 : (s" + str(i) + str(j) + "' = " + str(node.child1) + ");\n")
+                            env_module.append(
+                                "\t[tick] s" + str(i) + str(j) + " = " + str(k) + " -> 1 : (s" + str(i) + str(
+                                    j) + "' = " + str(node.child1) + ");\n")
                         else:
-                            env_module.append("\t[tick] s" + str(i) + str(j) + " = " + str(k) + " -> " + str(node.prob1) + " : (s" + str(i) + str(j) + "' = " + str(node.child1) + ") + " + str(node.prob2) + " : (s" + str(i) + str(j) + "' = " + str(node.child2) + ");\n")
+                            env_module.append("\t[tick] s" + str(i) + str(j) + " = " + str(k) + " -> " + str(
+                                node.prob1) + " : (s" + str(i) + str(j) + "' = " + str(node.child1) + ") + " + str(
+                                node.prob2) + " : (s" + str(i) + str(j) + "' = " + str(node.child2) + ");\n")
 
                     env_module.append("endmodule\n\n")
-                    env_module.append("formula inflow" + str(i) + str(j) + " = (s" + str(i) + str(j) + " = 0 ? 0 : 0)\n")
+                    env_module.append(
+                        "formula inflow" + str(i) + str(j) + " = (s" + str(i) + str(j) + " = 0 ? 0 : 0)\n")
 
-                    for k in range(1, len(env_nodes) - 1):
+                    for k in range(1, len(env_nodes)):
                         node = env_nodes[k]
-                        env_module.append(" + (s" + str(i) + str(j) + " = " + str(k) + " ? " + str(node.value) + " : 0)\n")
-
-                    node = env_nodes[-1]
-                    env_module.append(" + (s" + str(i) + str(j) + " = " + str(k) + " ? " + str(node.value) + " : 0);\n\n")
+                        env_module.append(
+                            " + (s" + str(i) + str(j) + " = " + str(k) + " ? " + str(node.value) + " : 0)")
+                        if k == len(env_nodes) - 1:
+                            env_module.append(";\n")
+                        env_module.append("\n")
 
                     prism_model_file.writelines(env_module)
 
@@ -558,7 +576,9 @@ class Crossroad:
         for i in range(4):
             for j in range(4):
                 if i != j:
-                    sys_module.append("\tcars" + str(i) + str(j) + " : int init " + str(self.num_cars[i][j]) + ";\n")
+                    sys_module.append("\tcars" + str(i) + str(j) + " : [0.." + str(
+                        self.num_cars[i][j] + decision_length * self.max_inflow) + "] init " + str(
+                        self.num_cars[i][j]) + ";\n")
 
         sys_module.append("\n\t[tick] !readyToInflow & !readyToOutflow -> 1 : (readyToInflow' = true);\n")
 
@@ -566,14 +586,16 @@ class Crossroad:
         for i in range(4):
             for j in range(4):
                 if i != j:
-                    inflow_line += " & (cars" + str(i) + str(j) + "' = cars" + str(i) + str(j) + " + inflow" + str(i) + str(j) + ")"
+                    inflow_line += " & (cars" + str(i) + str(j) + "' = cars" + str(i) + str(j) + " + inflow" + str(
+                        i) + str(j) + ")"
         inflow_line += ";\n"
 
         outflow_line = "\t[tack] readyToOutflow -> 1 : (readyToOutflow' = false)"
         for i in range(4):
             for j in range(4):
                 if i != j:
-                    outflow_line += " & (cars" + str(i) + str(j) + "' = cars" + str(i) + str(j) + " - outflow" + str(i) + str(j) + ")"
+                    outflow_line += " & (cars" + str(i) + str(j) + "' = cars" + str(i) + str(j) + " - outflow" + str(
+                        i) + str(j) + ")"
         outflow_line += ";\n"
 
         sys_module.append(inflow_line)
@@ -583,15 +605,14 @@ class Crossroad:
 
         tactic_module = ["module tactic\n", "\tphase : [0..5] init 0;\n",
                          "\treadyToAdvance : bool init false;\n", "\treadyToStart : bool init false;\n"
-                         "\t[tick] !readyToAdvance & !readyToStart -> 1 : (readyToAdvance' = true);\n\n"
-                         "\t[] readyToAdvance & lastTick = 0 -> 1 : (phase' = phase + 1) & (readyToAdvance' = false) & (readyToStart' = true);\n",
+                                                                  "\t[tick] !readyToAdvance & !readyToStart -> 1 : (readyToAdvance' = true);\n\n"
+                                                                  "\t[] readyToAdvance & lastTick = 0 -> 1 : (phase' = phase + 1) & (readyToAdvance' = false) & (readyToStart' = true);\n",
                          "\t[] readyToAdvance & lastTick > 0 -> (phase' = phase + 1) & (readyToAdvance' = false) & (readyToStart' = true);\n",
                          "\t[] readyToAdvance & lastTick > 0 -> (phase' = phase) & (readyToAdvance' = false) & (readyToStart' = true);\n",
                          "\t[tack] readyToStart -> 1 : (readyToStart' = false);\n"
                          "endmodule\n\n", "formula lastTick = decision_length - time + phase - 5;\n\n"]
         prism_model_file.writelines(tactic_module)
 
-        # TODO : Outflow
         outflows = [[None,
                      ["STRAIGHT", [True, True, False, False, False, False]],
                      ["LEFT", [True, False, False, False, False, False]],
@@ -612,7 +633,7 @@ class Crossroad:
             for j in range(4):
                 if i != j:
                     single_outflow = outflows[i][j]
-                    outflow_formula = ["formula outflow" + str(i) + str(j) + " = "]
+                    outflow_formula = ["formula raw_outflow" + str(i) + str(j) + " = "]
                     for k in range(6):
                         if k != 0:
                             outflow_formula.append("+ ")
@@ -626,6 +647,14 @@ class Crossroad:
                             outflow_formula.append(";")
                         outflow_formula.append("\n")
                     outflow_formula.append("\n")
+                    prism_model_file.writelines(outflow_formula)
+
+        for i in range(4):
+            for j in range(4):
+                if i != j:
+                    outflow_formula = [
+                        "formula outflow" + str(i) + str(j) + " = (raw_outflow" + str(i) + str(j) + " > cars" + str(
+                            i) + str(j) + " ? cars" + str(i) + str(j) + " : raw_outflow" + str(i) + str(j) + ");\n\n"]
                     prism_model_file.writelines(outflow_formula)
 
         prism_model_file.close()
