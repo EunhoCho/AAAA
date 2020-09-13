@@ -4,40 +4,38 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 
-def generate_inflow(raw_flow, name=None, start_tick=0, residual=None):
+def generate_inflow(raw_flow, name=None, start_tick=0):
     """
     Generate the discrete inflow based on the raw inflow, and store into the csv file
 
-    :param residual:
     :param start_tick:
     :param raw_flow: Average inflow of each tick / road
     :param name: The name of the csv file that contains the inflow
     :return: List of generated inflow - tick * 4 * 4 matrix
     """
-    if residual is None:
-        residual = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
 
     total_ticks = len(raw_flow[0][1])
     flow = [[], [], [], []]
     for i in range(4):
         for j in range(4):
             if i != j:
-                residual_value = residual[i][j]
                 route_flow = []
+                residual = 0
                 for k in range(start_tick, total_ticks):
                     value = raw_flow[i][j][k]
 
-                    residual_value += value
+                    residual += value
 
-                    if residual_value < 0:
+                    if residual < 0:
                         flow_val = 0
                     else:
-                        flow_val = int(residual_value)
-                        residual_value -= int(residual_value)
+                        flow_val = int(residual)
+                        residual -= int(residual)
 
-                        if residual_value > 0:
-                            random_val = np.random.choice([0, 1], 1, p=[1 - residual_value, residual_value])[0]
-                            residual_value -= random_val
+                        if residual > 0:
+                            random_val = np.random.choice([0, 1], 1, p=[1 - residual, residual])[0]
+                            residual -= random_val
+                            flow_val += random_val
 
                     route_flow.append(flow_val)
 

@@ -1,4 +1,3 @@
-import copy
 import csv
 
 import numpy as np
@@ -105,6 +104,7 @@ class Crossroad:
         self.cars = [[None, [], [], []], [[], None, [], []], [[], [], None, []], [[], [], [], None]]
         self.num_cars = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
         self.residual = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
+        self.phase_length = None
 
         # Read the configuration.
         with open(config, 'r') as config_file:
@@ -121,12 +121,21 @@ class Crossroad:
         self.config['SECONDS_PER_TICK'] = int(self.config['SECONDS_PER_TICK'])
         self.config['TOTAL_TICKS_PER_HOUR'] = int(60 * 60 / self.config['SECONDS_PER_TICK'])
         self.config['TOTAL_TICKS_PER_DAY'] = self.config['TOTAL_TICKS_PER_HOUR'] * 24
+        self.config['NUM_SAMPLES'] = int(self.config['NUM_SAMPLES'])
 
         self.config['OUTFLOW_STRAIGHT'] = float(self.config['OUTFLOW_STRAIGHT_PER_MIN']) / 60 * self.config[
             'SECONDS_PER_TICK']
         self.config['OUTFLOW_LEFT'] = float(self.config['OUTFLOW_LEFT_PER_MIN']) / 60 * self.config['SECONDS_PER_TICK']
         self.config['OUTFLOW_RIGHT'] = float(self.config['OUTFLOW_RIGHT_PER_MIN']) / 60 * self.config[
             'SECONDS_PER_TICK']
+        self.config['DECISION_DELAY'] = int(self.config['DECISION_DELAY'])
+
+        self.limit = []
+        for i in range(4):
+            limit = self.config['LIMIT_' + str(i)].split(',')
+            for j in range(4):
+                limit[j] = int(limit[j])
+            self.limit.append(limit)
 
         # Read the flow data
         self.flow_data = []
@@ -165,7 +174,7 @@ class Crossroad:
                     new_row.append(int(row[j]))
                 self.flow_data.append(new_row)
 
-    def inflow(self, start_tick=-1, length=1, raw=False):
+    def inflow(self, start_tick=-1, length=1, stack=False, raw=False):
         """
         Get the inflow data from start_tick to start_tick+length.
 
@@ -189,7 +198,11 @@ class Crossroad:
                     ans[j][k] += flow_tick[j * 4 + k]
 
         else:
-            ans = []
+            if stack:
+                ans = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
+            else:
+                ans = []
+
             for i in range(start_tick, start_tick + length):
                 ans_tick = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
                 tick = i % self.config['TOTAL_TICKS_PER_DAY']
@@ -200,7 +213,13 @@ class Crossroad:
                 for j in range(4):
                     for k in range(4):
                         ans_tick[j][k] += flow_tick[j * 4 + k]
-                ans.append(ans_tick)
+
+                if stack:
+                    for j in range(4):
+                        for k in range(4):
+                            ans[j][k] += ans_tick[j][k]
+                else:
+                    ans.append(ans_tick)
 
         return ans
 
@@ -217,6 +236,8 @@ class Crossroad:
             for j in range(4):
                 self.residual[i][j] += current_raw_inflow[i][j]
                 self.residual[i][j] -= current_inflow[i][j]
+                if self.residual[i][j] > 1:
+                    print('error')
                 for k in range(current_inflow[i][j]):
                     self.cars[i][j].append(Car(self.tick))
                     self.num_cars[i][j] += 1
@@ -247,8 +268,13 @@ class Crossroad:
         """
         decision_length = int(self.config['DECISION_LENGTH'])
 
-        remain_cars = copy.deepcopy(self.num_cars)
+        remain_cars = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
+        for i in range(4):
+            for j in range(4):
+                remain_cars[i][j] = self.num_cars[i][j]
+
         num_cars = 0
+        penalty = 0
         i = decision[0]
         j = decision[1]
         k = decision[2]
@@ -280,21 +306,49 @@ class Crossroad:
             # Make an outflow
             for outflow in outflow_list:
                 outflow_value = self.config['OUTFLOW_' + outflow[0]]
-                if self.cross_type == 1:
-                    if remain_cars[outflow[1]][outflow[2]] > outflow_value:
-                        remain_cars[outflow[1]][outflow[2]] -= outflow_value
-                    else:
-                        remain_cars[outflow[1]][outflow[2]] = 0
+                if remain_cars[outflow[1]][outflow[2]] > outflow_value:
+                    remain_cars[outflow[1]][outflow[2]] -= outflow_value
                 else:
-                    while outflow_value >= 1:
-                        if remain_cars[outflow[1]][outflow[2]] == 0:
-                            break
-                        outflow_value -= 1
-                        remain_cars[outflow[1]][outflow[2]] -= 1
+                    remain_cars[outflow[1]][outflow[2]] = 0
 
             for p in range(4):
                 for q in range(4):
+                    if remain_cars[p][q] > self.limit[p][q]:
+                        penalty += 1
                     num_cars += remain_cars[p][q]
+
+        return num_cars, penalty
+
+    def check_decision_delayed(self, decision, inflow):
+        """
+        Evaluate the decision based on the cross_type
+
+        :param decision: A list of integer that the sum is decision_length. Each element represents the length of phase.
+        :param inflow:
+        :return: Returns the value of evaluation metric - sum of remained cars on each tick in one decision length.
+        """
+        remain_cars = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
+        for i in range(4):
+            for j in range(4):
+                remain_cars[i][j] = self.num_cars[i][j]
+                remain_cars[i][j] += inflow[i][j]
+
+        num_cars = 0
+
+        for phase in range(6):
+            outflow_list = setup_outflow(phase)
+
+            for outflow in outflow_list:
+                outflow_value = self.config['OUTFLOW_' + outflow[0]] * decision[phase] * self.config['DECISION_DELAY']
+
+                if remain_cars[outflow[1]][outflow[2]] > outflow_value:
+                    remain_cars[outflow[1]][outflow[2]] -= outflow_value
+                else:
+                    remain_cars[outflow[1]][outflow[2]] = 0
+
+        for p in range(4):
+            for q in range(4):
+                num_cars += remain_cars[p][q]
 
         return num_cars
 
@@ -308,8 +362,9 @@ class Crossroad:
             return self.prism_decision_making()
 
         decision_length = self.config['DECISION_LENGTH']
+        decision_delay = decision_length * self.config['DECISION_DELAY']
 
-        if self.cross_type == 4 or (self.cross_type == 1 and self.tick == 0):
+        if self.cross_type == 4 or (self.cross_type == 8 and self.tick == 0):
             residual = decision_length % 6
             value = int(decision_length / 6)
             ans = [value] * 6
@@ -337,35 +392,86 @@ class Crossroad:
 
         if self.cross_type == 3:
             samples = []
-            for i in range(100):
-                samples.append(self.env_sampling())
+            for i in range(self.config['NUM_SAMPLES']):
+                samples.append(self.env_sampling(decision_length))
         elif self.cross_type == 0:
             target_inflow = self.inflow(self.tick, decision_length, raw=False)
         elif self.cross_type == 1:
             target_inflow = self.inflow(self.tick - decision_length, decision_length, raw=False)
         elif self.cross_type == 2:
             target_inflow = self.inflow(self.tick, decision_length, raw=True)
+        elif self.cross_type == 6:
+            target_inflow = self.inflow(self.tick - decision_delay, decision_delay, stack=True, raw=False)
+        elif self.cross_type == 7:
+            samples = []
+            for i in range(self.config['NUM_SAMPLES']):
+                samples.append(self.env_sampling(decision_delay, stack=True))
+        elif self.cross_type == 8:
 
-        ans = [0, 0, 0, 0, 0, 0]
+            needs = [0, 0, 0, 0, 0, 0]
+            for phase in range(6):
+                outflow_list = setup_outflow(phase)
+                for outflow in outflow_list:
+                    needs[phase] += self.num_cars[outflow[1]][outflow[2]]
+
+            needs_copy = []
+            for i in range(len(needs)):
+                needs_copy.append(needs[i])
+
+            while True:
+                if len(needs_copy) == 1:
+                    return self.phase_length
+
+                maximum = needs.index(max(needs_copy))
+                minimum = needs.index(min(needs_copy))
+
+                if maximum == minimum:
+                    return self.phase_length
+
+                if self.phase_length[minimum] == 0:
+                    needs_copy.remove(min(needs_copy))
+                else:
+                    phase_copy = []
+                    for i in range(6):
+                        phase_copy.append(self.phase_length[i])
+                    phase_copy[maximum] += 1
+                    phase_copy[minimum] -= 1
+                    return phase_copy
+
+        ans = None
         minimum = -1
-        for i in range(1, decision_length - 4):
-            for j in range(1, decision_length - i - 3):
-                for k in range(1, decision_length - i - j - 2):
-                    for l in range(1, decision_length - i - j - k - 1):
-                        for m in range(1, decision_length - i - j - k - l):
+        minimum_penalty = -1
+        for i in range(0, decision_length + 1):
+            for j in range(0, decision_length - i + 1):
+                for k in range(0, decision_length - i - j + 1):
+                    for l in range(0, decision_length - i - j - k + 1):
+                        for m in range(0, decision_length - i - j - k - l + 1):
                             decision = [i, j, k, l, m, decision_length - i - j - k - l - m]
 
+                            num_cars = 0
+                            penalties = 0
+
                             if self.cross_type == 3:
-                                num_cars = 0
                                 for sample in samples:
-                                    num_cars += self.check_decision(decision, sample)
+                                    num_car, penalty = self.check_decision(decision, sample)
+                                    num_cars += num_car
+                                    penalties += penalty
+
+                            elif self.cross_type == 6:
+                                num_cars = self.check_decision_delayed(decision, target_inflow)
+
+                            elif self.cross_type == 7:
+                                for sample in samples:
+                                    num_car = self.check_decision_delayed(decision, sample)
+                                    num_cars += num_car
 
                             else:
-                                num_cars = self.check_decision(decision, target_inflow)
+                                num_cars, penalties = self.check_decision(decision, target_inflow)
 
-                            if minimum == -1 or num_cars < minimum:
+                            if minimum == -1 or (num_cars < minimum and penalties <= minimum_penalty):
                                 ans = decision
                                 minimum = num_cars
+                                minimum_penalty = penalties
         print(ans)
         return ans
 
@@ -377,7 +483,7 @@ class Crossroad:
         """
         max_frame = int(self.config['MAX_FRAME'])
         decision_length = int(self.config['DECISION_LENGTH'])
-        phase_length = []
+        self.phase_length = []
         phase_tick = 0
 
         log_file = open('log_' + str(self.cross_type) + '.csv', 'w', newline='')
@@ -393,20 +499,32 @@ class Crossroad:
         log_writer.writerow(['tick', 'phase0', 'phase1', 'phase2', 'phase3', 'phase4', 'phase5'])
 
         x_numbers = []
-        for i in range(144):
+        ticks_per_10_min = 600 / self.config['SECONDS_PER_TICK']
+        total = int(max_frame / ticks_per_10_min)
+        if total != max_frame / ticks_per_10_min:
+            total += 1
+        for i in range(total):
             x_numbers.append(i / 6)
         y_numbers = []
         y_number = 0
         num_y_number = 0
 
+        decision_delay = 0
+
         while self.tick < max_frame:
             if self.tick % decision_length == 0:
-                phase_length = self.decision_making()
-                dm_writer.writerow([self.tick] + phase_length)
                 self.phase = 0
                 phase_tick = 0
 
-            while phase_tick == phase_length[self.phase]:
+                if (self.cross_type != 6 and self.cross_type != 7) or decision_delay == 0:
+                    decision_delay = 0
+                    self.phase_length = self.decision_making()
+                    dm_writer.writerow([self.tick] + self.phase_length)
+
+                decision_delay += 1
+                decision_delay %= self.config['DECISION_DELAY']
+
+            while phase_tick == self.phase_length[self.phase]:
                 self.phase += 1
                 phase_tick = 0
 
@@ -417,7 +535,7 @@ class Crossroad:
                 for j in range(4):
                     write_row.append(self.num_cars[i][j])
             log_writer.writerow(write_row)
-            print(self.tick, self.phase, self.total_delay, self.total_cars, self.num_cars)
+            print(self.tick_to_time(), self.phase, self.num_cars)
 
             sum_num_cars = 0
             for i in range(4):
@@ -427,7 +545,7 @@ class Crossroad:
             y_number += sum_num_cars
             num_y_number += 1
 
-            if self.tick == int(max_frame / 144 * (len(y_numbers) + 1)):
+            if self.tick == int(max_frame / len(x_numbers) * (len(y_numbers) + 1)):
                 y_numbers.append(y_number / num_y_number)
                 y_number = 0
                 num_y_number = 0
@@ -442,19 +560,20 @@ class Crossroad:
 
         return self.total_delay, self.total_cars, x_numbers, y_numbers
 
-    def env_sampling(self):
-        decision_length = self.config['DECISION_LENGTH']
+    def env_sampling(self, length, stack=False):
         cur_residual = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
         for i in range(4):
             for j in range(4):
                 cur_residual[i][j] = self.residual[i][j]
 
-        raw_inflows = []
-        for time in range(decision_length):
-            raw_inflows.append(self.inflow(start_tick=self.tick + time, raw=True))
+        raw_inflows = self.inflow(start_tick=self.tick, length=length, raw=True)
 
-        sample_inflow = []
-        for k in range(decision_length):
+        if stack:
+            sample_inflow = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
+        else:
+            sample_inflow = []
+
+        for k in range(length):
             inflow = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
             for i in range(4):
                 for j in range(4):
@@ -466,11 +585,15 @@ class Crossroad:
 
                             if cur_residual[i][j] > 0:
                                 random_val = np.random.choice([0, 1], 1, p=[1 - cur_residual[i][j], cur_residual[i][j]])[0]
-                                cur_residual[i][j] -= random_val
 
-                                inflow[i][j] += random_val
                                 cur_residual[i][j] -= random_val
-            sample_inflow.append(inflow)
+                                inflow[i][j] += random_val
+            if stack:
+                for i in range(4):
+                    for j in range(4):
+                        sample_inflow[i][j] += inflow[i][j]
+            else:
+                sample_inflow.append(inflow)
 
         return sample_inflow
 
@@ -501,7 +624,7 @@ class Crossroad:
         for i in range(4):
             for j in range(4):
                 if i != j:
-                    class env_node:
+                    class EnvNode:
                         def __init__(self, residual, time, value):
                             self.residual = residual
                             self.time = time
@@ -511,7 +634,7 @@ class Crossroad:
                             self.prob2 = 0
                             self.child2 = -1
 
-                    env_nodes = [env_node(cur_residual[i][j], -1, 0)]
+                    env_nodes = [EnvNode(cur_residual[i][j], -1, 0)]
 
                     k = 0
                     while k != len(env_nodes):
@@ -526,17 +649,17 @@ class Crossroad:
                         residual += target_inflow
 
                         if residual < 0:
-                            env_nodes.append(env_node(residual, time, 0))
+                            env_nodes.append(EnvNode(residual, time, 0))
                             target_node.child1 = len(env_nodes) - 1
                         else:
                             value = int(residual)
                             residual -= int(residual)
 
-                            env_nodes.append(env_node(residual, time, value))
+                            env_nodes.append(EnvNode(residual, time, value))
                             target_node.prob1 = 1 - residual
                             target_node.child1 = len(env_nodes) - 1
 
-                            env_nodes.append(env_node(residual - 1, time, value + 1))
+                            env_nodes.append(EnvNode(residual - 1, time, value + 1))
                             target_node.prob2 = residual
                             target_node.child2 = len(env_nodes) - 1
 
@@ -658,3 +781,14 @@ class Crossroad:
                     prism_model_file.writelines(outflow_formula)
 
         prism_model_file.close()
+
+    def tick_to_time(self):
+        seconds = self.tick * self.config['SECONDS_PER_TICK']
+
+        minutes = int(seconds / 60)
+        seconds = seconds - int(seconds / 60) * 60
+
+        hours = int(minutes / 60)
+        minutes = minutes - int(minutes / 60) * 60
+
+        return '%02d:%02d:%02d' % (hours, minutes, seconds)
