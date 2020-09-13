@@ -211,11 +211,6 @@ pip-selfcheck.json
 
 # End of https://www.gitignore.io/api/venv,python,pycharm
 
-inflow.csv
-raw_inflow.csv
-log_*.csv
-dm_*.csv
-flow_*.csv
+*.csv
 crossroad.sm
-inflow_save.png
-waiting.png
+*.png

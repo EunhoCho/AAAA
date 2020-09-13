@@ -3,7 +3,7 @@ from generate_flow_data import generate_flow_data
 from matplotlib import pyplot as plt
 
 if __name__ == "__main__":
-    # generate_flow_data()
+    generate_flow_data()
     reactive_y = None
     proactive_y = None
     for i in [4, 7, 8]:

@@ -1,4 +1,5 @@
 import csv
+import time
 
 import numpy as np
 
@@ -446,7 +447,7 @@ class Crossroad:
                 for k in range(0, decision_length - i - j + 1):
                     for l in range(0, decision_length - i - j - k + 1):
                         for m in range(0, decision_length - i - j - k - l + 1):
-                            decision = [i, j, k, l, m, decision_length - i - j - k - l - m]
+                            decision = [i, decision_length - i - j - k - l - m, j, k, l, m]
 
                             num_cars = 0
                             penalties = 0
@@ -488,15 +489,18 @@ class Crossroad:
 
         log_file = open('log_' + str(self.cross_type) + '.csv', 'w', newline='')
         log_writer = csv.writer(log_file)
-        header = ['tick', 'phase', 'delayed', 'passed']
-        for i in range(4):
-            for j in range(4):
-                header.append(str(i) + '->' + str(j))
-        log_writer.writerow(header)
+        header = ['tick', 'num_car']
+        # header = ['tick', 'phase', 'delayed', 'passed']
+        # for i in range(4):
+        #     for j in range(4):
+        #         header.append(str(i) + '->' + str(j))
+        # log_writer.writerow(header)
 
         dm_file = open('dm_' + str(self.cross_type) + '.csv', 'w', newline='')
         dm_writer = csv.writer(dm_file)
-        log_writer.writerow(['tick', 'phase0', 'phase1', 'phase2', 'phase3', 'phase4', 'phase5'])
+        time_file = open('time_' + str(self.cross_type) + str(self.config['NUM_SAMPLES']) + '.csv', 'w', newline='')
+        time_writer = csv.writer(time_file)
+        dm_writer.writerow(['tick', 'phase0', 'phase1', 'phase2', 'phase3', 'phase4', 'phase5'])
 
         x_numbers = []
         ticks_per_10_min = 600 / self.config['SECONDS_PER_TICK']
@@ -518,7 +522,10 @@ class Crossroad:
 
                 if (self.cross_type != 6 and self.cross_type != 7) or decision_delay == 0:
                     decision_delay = 0
+                    start_time = time.time()
                     self.phase_length = self.decision_making()
+                    end_time = time.time()
+                    time_writer.writerow([end_time - start_time])
                     dm_writer.writerow([self.tick] + self.phase_length)
 
                 decision_delay += 1
@@ -530,11 +537,10 @@ class Crossroad:
 
             self.update()
 
-            write_row = [self.tick, self.phase, self.total_delay, self.total_cars]
-            for i in range(4):
-                for j in range(4):
-                    write_row.append(self.num_cars[i][j])
-            log_writer.writerow(write_row)
+            # write_row = [self.tick, self.phase, self.total_delay, self.total_cars]
+            # for i in range(4):
+            #     for j in range(4):
+            #         write_row.append(self.num_cars[i][j])
             print(self.tick_to_time(), self.phase, self.num_cars)
 
             sum_num_cars = 0
@@ -547,6 +553,7 @@ class Crossroad:
 
             if self.tick == int(max_frame / len(x_numbers) * (len(y_numbers) + 1)):
                 y_numbers.append(y_number / num_y_number)
+                log_writer.writerow([y_number / num_y_number])
                 y_number = 0
                 num_y_number = 0
 
@@ -554,9 +561,11 @@ class Crossroad:
             self.tick += 1
 
         y_numbers.append(y_number / num_y_number)
+        log_writer.writerow([y_number / num_y_number])
 
         log_file.close()
         dm_file.close()
+        time_file.close()
 
         return self.total_delay, self.total_cars, x_numbers, y_numbers
 
