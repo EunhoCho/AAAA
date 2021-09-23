@@ -15,35 +15,23 @@ def setup_outflow(phase):
     """
     outflow_list = []
     if phase == 0:
-        outflow_list.append(('STRAIGHT', 0, 1))
-        outflow_list.append(('LEFT', 0, 2))
-        outflow_list.append(('RIGHT', 0, 3))
-        outflow_list.append(('RIGHT', 2, 0))
+        outflow_list.append(('STRAIGHT', 0))
+        outflow_list.append(('LEFT', 0))
     elif phase == 1:
-        outflow_list.append(('STRAIGHT', 0, 1))
-        outflow_list.append(('STRAIGHT', 1, 0))
-        outflow_list.append(('RIGHT', 0, 3))
-        outflow_list.append(('RIGHT', 1, 2))
+        outflow_list.append(('STRAIGHT', 0))
+        outflow_list.append(('STRAIGHT', 2))
     elif phase == 2:
-        outflow_list.append(('STRAIGHT', 1, 0))
-        outflow_list.append(('LEFT', 1, 3))
-        outflow_list.append(('RIGHT', 1, 2))
-        outflow_list.append(('RIGHT', 3, 1))
+        outflow_list.append(('STRAIGHT', 2))
+        outflow_list.append(('LEFT', 2))
     elif phase == 3:
-        outflow_list.append(('STRAIGHT', 2, 3))
-        outflow_list.append(('LEFT', 2, 1))
-        outflow_list.append(('RIGHT', 2, 0))
-        outflow_list.append(('RIGHT', 1, 2))
+        outflow_list.append(('STRAIGHT', 1))
+        outflow_list.append(('LEFT', 1))
     elif phase == 4:
-        outflow_list.append(('STRAIGHT', 2, 3))
-        outflow_list.append(('STRAIGHT', 3, 2))
-        outflow_list.append(('RIGHT', 2, 0))
-        outflow_list.append(('RIGHT', 3, 1))
+        outflow_list.append(('STRAIGHT', 1))
+        outflow_list.append(('STRAIGHT', 3))
     elif phase == 5:
-        outflow_list.append(('STRAIGHT', 3, 2))
-        outflow_list.append(('LEFT', 3, 0))
-        outflow_list.append(('RIGHT', 3, 1))
-        outflow_list.append(('RIGHT', 0, 3))
+        outflow_list.append(('STRAIGHT', 3))
+        outflow_list.append(('LEFT', 3))
 
     return outflow_list
 
@@ -102,9 +90,9 @@ class Crossroad:
         self.total_cars = 0
         self.config = {}
         self.tick = 0
-        self.cars = [[None, [], [], []], [[], None, [], []], [[], [], None, []], [[], [], [], None]]
-        self.num_cars = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
-        self.residual = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
+        self.cars = [[[], []], [[], []], [[], []], [[], []]]
+        self.num_cars = [[0, 0], [0, 0], [0, 0], [0, 0]]
+        self.residual = [[0, 0], [0, 0], [0, 0], [0, 0]]
         self.phase_length = None
 
         # Read the configuration.
@@ -127,8 +115,6 @@ class Crossroad:
         self.config['OUTFLOW_STRAIGHT'] = float(self.config['OUTFLOW_STRAIGHT_PER_MIN']) / 60 * self.config[
             'SECONDS_PER_TICK']
         self.config['OUTFLOW_LEFT'] = float(self.config['OUTFLOW_LEFT_PER_MIN']) / 60 * self.config['SECONDS_PER_TICK']
-        self.config['OUTFLOW_RIGHT'] = float(self.config['OUTFLOW_RIGHT_PER_MIN']) / 60 * self.config[
-            'SECONDS_PER_TICK']
         self.config['DECISION_DELAY'] = int(self.config['DECISION_DELAY'])
 
         self.limit = []
