@@ -2,3 +2,7 @@ matplotlib==3.4.3
 numpy==1.21.2
 tqdm==4.62.3
 scipy==1.7.1
+torch==1.9.1+cu102
+torchaudio==0.9.1
+torchvision==0.10.1+cu102
+scikit-learn==1.0

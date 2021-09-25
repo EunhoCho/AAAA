@@ -4,8 +4,7 @@ from adaptive_crossroad import config, crossroad
 
 
 def run_tactic(tactic, flow_number):
-    str_tactic = str(tactic[0]) + '_' + str(tactic[1]) + '_' + str(tactic[2]) + '_' + str(tactic[3]) + '_' + str(
-        tactic[4]) + '_' + str(tactic[5])
+    str_tactic = config.tactic_string(tactic)
     return crossroad.run_crossroad('learning/' + str_tactic, flow_number, tactic)
 
 

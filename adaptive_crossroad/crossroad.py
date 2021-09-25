@@ -2,11 +2,15 @@ import csv
 
 import numpy as np
 import scipy.stats
+from sklearn.preprocessing import MinMaxScaler
 from tqdm import tqdm
 
 from adaptive_crossroad import config
+from adaptive_crossroad.value_net import ValueNet
 from environment import config as env_config
 from environment.sample import sample_environment
+
+VALUE_NETS = {}
 
 
 def read_flow(number):
@@ -82,7 +86,7 @@ def sim_run_crossroad(duration, decision, target_flow, default_num_cars):
     return result
 
 
-def decision_making(crossroad_type, avg_flow, tick, num_cars, default_decision):
+def decision_making(crossroad_type, avg_flow, tick, num_cars, vn_data, default_decision):
     if crossroad_type == 'PMC':
         with open('crossroad.sm', 'w') as prism_file:
             prism_file.write('const int decision_length = ' + str(config.DECISION_LENGTH) + ';\n')
@@ -269,7 +273,24 @@ def decision_making(crossroad_type, avg_flow, tick, num_cars, default_decision):
         return opt_tactic
 
     elif crossroad_type == 'VN':
-        pass
+        if len(VALUE_NETS.keys()) == 0:
+            for tactic in config.TACTICS:
+                str_tactic = config.tactic_string(tactic)
+                valueNet = ValueNet(config.VN_CLASS, config.VN_INPUT_SIZE, config.VN_HIDDEN_SIZE, config.VN_LAYERS,
+                                    config.DECISION_LENGTH, '../valueNet/' + str_tactic + '.torch').to(config.DEVICE)
+                VALUE_NETS[tactic] = valueNet
+
+        min_value = -1
+        opt_tactic = []
+        mm = MinMaxScaler()
+        for tactic in config.TACTICS:
+            predicted_value = VALUE_NETS[tactic](vn_data.to(config.DEVICE)).data.detach().cpu().numpy()
+            predicted_value = mm.inverse_transform(predicted_value)
+            if min_value == -1 or min_value > predicted_value:
+                opt_tactic = tactic
+                min_value = predicted_value
+
+        return opt_tactic
 
     return default_decision
 
@@ -295,6 +316,7 @@ def run_crossroad(name, crossroad_type, flow_number=config.FLOW_NUMBER, default_
             y_writer = csv.writer(log_y_file)
 
             sum_decision_result = 0
+            vn_data = []
             for i in tqdm(range(8640 // config.TEN_SECOND_PER_TICK)):
                 num_cars = num_cars + target_flow[i] - out_flow[i % config.DECISION_LENGTH]
 
@@ -303,6 +325,7 @@ def run_crossroad(name, crossroad_type, flow_number=config.FLOW_NUMBER, default_
                         num_cars[j] = 0
 
                 phase_result = phase_result + num_cars
+                vn_data.append([i, *num_cars, *target_flow[i]])
                 x_writer.writerow([i, *num_cars, *target_flow[i]])
 
                 phase_tick += 1
@@ -319,8 +342,9 @@ def run_crossroad(name, crossroad_type, flow_number=config.FLOW_NUMBER, default_
 
                     if i != 8639:
                         phase = 0
-                        phase_length = decision_making(crossroad_type, avg_flow, i, num_cars, default_decision)
+                        phase_length = decision_making(crossroad_type, avg_flow, i, num_cars, vn_data, default_decision)
                         out_flow = generate_out_flow(phase_length)
+                        vn_data = []
 
     point_result = []
     sum_result = 0
