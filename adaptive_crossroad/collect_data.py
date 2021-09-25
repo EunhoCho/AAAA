@@ -1,6 +1,6 @@
 from tqdm import tqdm
 
-from crossroad import config, crossroad
+from adaptive_crossroad import config, crossroad
 
 
 def run_tactic(tactic, flow_number):

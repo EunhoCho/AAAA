@@ -6,14 +6,17 @@ TICK_PER_POINT = 12
 TEN_SECOND_PER_TICK = 1
 DECISION_LENGTH = 9
 DEFAULT_DECISION = [2, 2, 2, 1, 1, 1]
-OUTPUT_FLOW = np.array([[300, 100, 0, 0, 0, 0, 0, 0],
-                        [300, 0, 300, 0, 0, 0, 0, 0],
-                        [0, 0, 300, 100, 0, 0, 0, 0],
-                        [0, 0, 0, 0, 300, 100, 0, 0],
-                        [0, 0, 0, 0, 300, 0, 300, 0],
-                        [0, 0, 0, 0, 0, 0, 300, 100]]) * TEN_SECOND_PER_TICK
+STRAIGHT_OUT = 300
+LEFT_OUT = 100
+OUTPUT_FLOW = np.array([[STRAIGHT_OUT, LEFT_OUT, 0, 0, 0, 0, 0, 0],
+                        [STRAIGHT_OUT, 0, STRAIGHT_OUT, 0, 0, 0, 0, 0],
+                        [0, 0, STRAIGHT_OUT, LEFT_OUT, 0, 0, 0, 0],
+                        [0, 0, 0, 0, STRAIGHT_OUT, LEFT_OUT, 0, 0],
+                        [0, 0, 0, 0, STRAIGHT_OUT, 0, STRAIGHT_OUT, 0],
+                        [0, 0, 0, 0, 0, 0, STRAIGHT_OUT, LEFT_OUT]]) * TEN_SECOND_PER_TICK
 
 SMC_SAMPLES = 100
+MAX_INFLOW = 100000
 
 TACTICS = []
 for i in range(1, DECISION_LENGTH - 4):
