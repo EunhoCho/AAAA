@@ -12,13 +12,17 @@ from adaptive_crossroad.value_net import ValueNet
 if __name__ == "__main__":
     for tactic in tqdm(config.TACTICS):
         target = config.tactic_string(tactic)
-        x_file = open('../log/x/' + target + '.csv', 'r', newline='')
-        x = np.array(list(csv.reader(x_file))).astype(int)
-        x_file.close()
 
-        y_file = open('../log/y/' + target + '.csv', 'r', newline='')
-        y = np.array(list(csv.reader(y_file))).astype(int)
-        y_file.close()
+        x = np.array([])
+        y = np.array([])
+        for i in range(config.ENV_SAMPLES):
+            with open('../log/x/' + target + '_' + str(i) + '.csv', 'r', newline='') as x_file:
+                x = [*x, *np.array(list(csv.reader(x_file))[:-config.DECISION_LENGTH]).astype(int)]
+            with open('../log/y/' + target + '_' + str(i) + '.csv', 'r', newline='') as y_file:
+                y = [*y, *np.array(list(csv.reader(y_file))).astype(int)]
+
+        x = np.array(x)
+        y = np.array(y)
 
         training = int(config.TRAIN_RATE * config.ENV_SAMPLES)
         training_data_length_x = (8640 // config.TEN_SECOND_PER_TICK - config.DECISION_LENGTH) * training
