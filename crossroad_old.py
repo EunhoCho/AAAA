@@ -579,7 +579,8 @@ class Crossroad:
                             cur_residual[i][j] -= inflow[i][j]
 
                             if cur_residual[i][j] > 0:
-                                random_val = np.random.choice([0, 1], 1, p=[1 - cur_residual[i][j], cur_residual[i][j]])[0]
+                                random_val = \
+                                np.random.choice([0, 1], 1, p=[1 - cur_residual[i][j], cur_residual[i][j]])[0]
 
                                 cur_residual[i][j] -= random_val
                                 inflow[i][j] += random_val
