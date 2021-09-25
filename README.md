@@ -10,6 +10,7 @@
   * log
     * x
     * y
+  * prism
   * valueNet
     * scaler
       * minmax

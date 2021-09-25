@@ -19,6 +19,7 @@ OUTPUT_FLOW = np.array([[STRAIGHT_OUT, LEFT_OUT, 0, 0, 0, 0, 0, 0],
 
 # PMC Configuration
 MAX_INFLOW = 100000
+PRISM_PATH = "D:/Program Files/prism-4.6/bin/"
 
 # SMC Configuration
 SMC_SAMPLES = 100

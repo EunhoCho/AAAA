@@ -6,7 +6,7 @@ from adaptive_crossroad import crossroad, config
 FIGURE_NAME = 'SMC_PMC_' + str(config.FLOW_NUMBER)
 
 if __name__ == "__main__":
-    targets = [('VN_TEST', 'VN', config.FLOW_NUMBER)]
+    targets = [('PMC', 'PMC', config.FLOW_NUMBER)]
     # targets = [('DEFAULT', '', config.FLOW_NUMBER),
     #            ('VN_TEST', 'VN', config.FLOW_NUMBER),
     #            ('SMC', 'SMC', config.FLOW_NUMBER),

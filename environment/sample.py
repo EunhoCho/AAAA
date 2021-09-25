@@ -7,11 +7,15 @@ from environment import config
 
 
 def sample_environment(start, end, avg_flow):
+    sample_number = []
+    for i in range(start, end):
+        sample_number.append(np.random.normal(0, 1))
+
     sample_environment = []
     for data in avg_flow:
         value = []
         for i in range(start, end):
-            value.append(max(int(np.random.normal(data[i], (data[i] * config.STDEV_RATE) ** 2, 1)[0]), 0))
+            value.append(max(0, int(sample_number[i] * (data[i] * config.STDEV_RATE) ** 2 + data[i])))
 
         sample_environment.append(value)
 
