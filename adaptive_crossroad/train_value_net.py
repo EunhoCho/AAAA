@@ -1,9 +1,9 @@
 import csv
 
+import joblib
 import numpy as np
 import torch
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
-import joblib
 from torch.autograd import Variable
 from tqdm import tqdm
 

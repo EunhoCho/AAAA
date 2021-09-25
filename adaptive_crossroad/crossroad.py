@@ -1,14 +1,12 @@
 import csv
 
+import joblib
 import numpy as np
 import scipy.stats
-import joblib
 import torch
-from sklearn.preprocessing import MinMaxScaler
 from torch.autograd import Variable
-from tqdm import tqdm
 
-from adaptive_crossroad import config, value_net
+from adaptive_crossroad import config
 from adaptive_crossroad.value_net import ValueNet
 from environment import config as env_config
 from environment.sample import sample_environment
@@ -280,7 +278,8 @@ def decision_making(crossroad_type, avg_flow, tick, num_cars, vn_data, default_d
             for tactic in config.TACTICS:
                 str_tactic = config.tactic_string(tactic)
                 valueNet = ValueNet(config.VN_CLASS, config.VN_INPUT_SIZE, config.VN_HIDDEN_SIZE, config.VN_LAYERS,
-                                    config.DECISION_LENGTH, '../valueNet/valueNet/' + str_tactic + '.torch').to(config.DEVICE)
+                                    config.DECISION_LENGTH, '../valueNet/valueNet/' + str_tactic + '.torch').to(
+                    config.DEVICE)
                 ss = joblib.load('../valueNet/scaler/standard/' + str_tactic + '.sc')
                 ms = joblib.load('../valueNet/scaler/minmax/' + str_tactic + '.sc')
                 VALUE_NETS[str_tactic] = [valueNet, ss, ms]

@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-from sklearn.preprocessing import StandardScaler
 from torch.autograd import Variable
 
 from adaptive_crossroad import config
@@ -27,7 +26,7 @@ class ValueNet(nn.Module):
         h_0 = Variable(torch.zeros(self.num_layers, x.size(0), self.hidden_size)).to(config.DEVICE)
         c_0 = Variable(torch.zeros(self.num_layers, x.size(0), self.hidden_size)).to(config.DEVICE)
 
-        (hn, cn) = self.lstm(x_tensor_reshaped, (h_0, c_0))
+        (hn, cn) = self.lstm(x, (h_0, c_0))
         hn = hn.reshape(-1, self.hidden_size * self.seq_length)
         out = self.relu(hn)
         out = self.linear1(out)
@@ -35,11 +34,3 @@ class ValueNet(nn.Module):
         out = self.linear2(out)
 
         return out
-
-
-def tensorize(vn_data):
-    ss = StandardScaler()
-    target_data = Variable(torch.Tensor(ss.transform(vn_data)))
-    target_tensor = torch.reshape(target_data, (int(target_data.shape[0] / config.DECISION_LENGTH),
-                                                config.DECISION_LENGTH, target_data.shape[1]))
-    return None

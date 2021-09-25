@@ -11,3 +11,7 @@
     * x
     * y
   * valueNet
+    * scaler
+      * minmax
+      * standard
+    * valueNet
