@@ -27,7 +27,7 @@ class ValueNet(nn.Module):
         h_0 = Variable(torch.zeros(self.num_layers, x.size(0), self.hidden_size)).to(config.DEVICE)
         c_0 = Variable(torch.zeros(self.num_layers, x.size(0), self.hidden_size)).to(config.DEVICE)
 
-        (hn, cn) = self.lstm(x, (h_0, c_0))
+        (hn, cn) = self.lstm(x_tensor_reshaped, (h_0, c_0))
         hn = hn.reshape(-1, self.hidden_size * self.seq_length)
         out = self.relu(hn)
         out = self.linear1(out)

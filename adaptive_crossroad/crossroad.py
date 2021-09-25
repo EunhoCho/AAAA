@@ -329,9 +329,8 @@ def run_crossroad(name, crossroad_type, flow_number=config.FLOW_NUMBER, default_
             x_writer = csv.writer(log_x_file)
             y_writer = csv.writer(log_y_file)
 
-            sum_decision_result = 0
             vn_data = []
-            for i in tqdm(range(8640 // config.TEN_SECOND_PER_TICK)):
+            for i in range(8640 // config.TEN_SECOND_PER_TICK):
                 num_cars = num_cars + target_flow[i] - out_flow[i % config.DECISION_LENGTH]
 
                 for j in range(8):
@@ -348,8 +347,7 @@ def run_crossroad(name, crossroad_type, flow_number=config.FLOW_NUMBER, default_
                     phase_tick = 0
 
                 if phase == 6 and i != 8639:
-                    y_writer.writerow([sum_decision_result])
-                    sum_decision_result = 0
+                    y_writer.writerow([sum(phase_result)])
 
                     result.append(sum(phase_result) / config.DECISION_LENGTH)
                     phase_result = np.array([0] * 8)
