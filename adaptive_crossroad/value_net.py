@@ -24,14 +24,8 @@ class ValueNet(nn.Module):
             self.eval()
 
     def forward(self, x):
-        ss = StandardScaler()
-        x_ss = ss.fit_transform(x)
-        x_tensor = Variable(torch.Tensor(x_ss))
-        x_tensor_reshaped = torch.reshape(x_tensor, (int(x_tensor.shape[0] / 9), 9, x_tensor.shape[1])).to(
-            config.DEVICE)
-
-        h_0 = Variable(torch.zeros(self.num_layers, x_tensor_reshaped.size(0), self.hidden_size)).to(config.DEVICE)
-        c_0 = Variable(torch.zeros(self.num_layers, x_tensor_reshaped.size(0), self.hidden_size)).to(config.DEVICE)
+        h_0 = Variable(torch.zeros(self.num_layers, x.size(0), self.hidden_size)).to(config.DEVICE)
+        c_0 = Variable(torch.zeros(self.num_layers, x.size(0), self.hidden_size)).to(config.DEVICE)
 
         (hn, cn) = self.lstm(x_tensor_reshaped, (h_0, c_0))
         hn = hn.reshape(-1, self.hidden_size * self.seq_length)
@@ -41,3 +35,11 @@ class ValueNet(nn.Module):
         out = self.linear2(out)
 
         return out
+
+
+def tensorize(vn_data):
+    ss = StandardScaler()
+    target_data = Variable(torch.Tensor(ss.transform(vn_data)))
+    target_tensor = torch.reshape(target_data, (int(target_data.shape[0] / config.DECISION_LENGTH),
+                                                config.DECISION_LENGTH, target_data.shape[1]))
+    return None
