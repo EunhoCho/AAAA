@@ -2,10 +2,13 @@ import csv
 
 import numpy as np
 import scipy.stats
+import joblib
+import torch
 from sklearn.preprocessing import MinMaxScaler
+from torch.autograd import Variable
 from tqdm import tqdm
 
-from adaptive_crossroad import config
+from adaptive_crossroad import config, value_net
 from adaptive_crossroad.value_net import ValueNet
 from environment import config as env_config
 from environment.sample import sample_environment
@@ -277,15 +280,26 @@ def decision_making(crossroad_type, avg_flow, tick, num_cars, vn_data, default_d
             for tactic in config.TACTICS:
                 str_tactic = config.tactic_string(tactic)
                 valueNet = ValueNet(config.VN_CLASS, config.VN_INPUT_SIZE, config.VN_HIDDEN_SIZE, config.VN_LAYERS,
-                                    config.DECISION_LENGTH, '../valueNet/' + str_tactic + '.torch').to(config.DEVICE)
-                VALUE_NETS[tactic] = valueNet
+                                    config.DECISION_LENGTH, '../valueNet/valueNet/' + str_tactic + '.torch').to(config.DEVICE)
+                ss = joblib.load('../valueNet/scaler/standard/' + str_tactic + '.sc')
+                ms = joblib.load('../valueNet/scaler/minmax/' + str_tactic + '.sc')
+                VALUE_NETS[str_tactic] = [valueNet, ss, ms]
 
         min_value = -1
         opt_tactic = []
-        mm = MinMaxScaler()
         for tactic in config.TACTICS:
-            predicted_value = VALUE_NETS[tactic](vn_data.to(config.DEVICE)).data.detach().cpu().numpy()
-            predicted_value = mm.inverse_transform(predicted_value)
+            str_tactic = config.tactic_string(tactic)
+            valueNet = VALUE_NETS[str_tactic][0]
+            ss = VALUE_NETS[str_tactic][1]
+            ms = VALUE_NETS[str_tactic][2]
+
+            x_ss = ss.fit_transform(vn_data)
+            x_tensor = Variable(torch.Tensor(x_ss))
+            x_tensor_reshaped = torch.reshape(x_tensor, (int(x_tensor.shape[0] / config.DECISION_LENGTH),
+                                                         config.DECISION_LENGTH, x_tensor.shape[1])).to(config.DEVICE)
+
+            predicted_value = valueNet(x_tensor_reshaped.to(config.DEVICE)).data.detach().cpu().numpy()
+            predicted_value = ms.inverse_transform(predicted_value)
             if min_value == -1 or min_value > predicted_value:
                 opt_tactic = tactic
                 min_value = predicted_value
