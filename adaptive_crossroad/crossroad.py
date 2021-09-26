@@ -303,7 +303,7 @@ def decision_making_VN(tick, num_cars, avg_flow, vn_data, default_decision):
 
 
 def run_crossroad(name, crossroad_type, flow_number=config.FLOW_NUMBER, default_decision=None, start_tick=0,
-                  end_tick=8640 // config.TEN_SECOND_PER_TICK):
+                  end_tick=8640 // config.TEN_SECOND_PER_TICK, tqdm_off=False):
     if default_decision is None:
         default_decision = config.DEFAULT_DECISION
 
@@ -337,8 +337,12 @@ def run_crossroad(name, crossroad_type, flow_number=config.FLOW_NUMBER, default_
                 erased_flow = None
                 vn_data = []
 
-                tick_tqdm = tqdm(range(start_tick, end_tick))
-                tick_tqdm.set_description("Crossroad")
+                if tqdm_off:
+                    tick_tqdm = range(start_tick, end_tick)
+                else:
+                    tick_tqdm = tqdm(range(start_tick, end_tick))
+                    tick_tqdm.set_description("Crossroad")
+
                 for i in tick_tqdm:
                     if i % config.DECISION_LENGTH == 0:
                         phase = 0
