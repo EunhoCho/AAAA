@@ -8,6 +8,7 @@
   * figure
   * flow
   * log
+    * dm
     * x
     * y
   * prism

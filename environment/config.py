@@ -19,3 +19,5 @@ ROADS = [AStraight, ALeft, BStraight, BLeft, CStraight, CLeft, DStraight, DLeft]
 TIME = np.arange(24) * 360 / TEN_SECOND_PER_TICK + 180 / TEN_SECOND_PER_TICK
 SAMPLES = 100
 STDEV_RATE = 0.25
+STDEV = 600
+METHOD = 'HARD'

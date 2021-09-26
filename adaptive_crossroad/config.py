@@ -3,7 +3,7 @@ import torch
 
 # Crossroad Configuration
 ENV_SAMPLES = 100
-FLOW_NUMBER = 0
+FLOW_NUMBER = 80
 TICK_PER_POINT = 12
 TEN_SECOND_PER_TICK = 1
 DECISION_LENGTH = 9
