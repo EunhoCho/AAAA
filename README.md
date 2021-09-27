@@ -7,6 +7,9 @@
 * Make directories
   * figure
   * flow
+  * learningData
+    * x
+    * y
   * log
     * dm
     * x

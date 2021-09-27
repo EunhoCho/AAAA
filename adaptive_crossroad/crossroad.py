@@ -257,8 +257,8 @@ def decision_making_VN(tick, num_cars, avg_flow, vn_data, default_decision):
     if len(VALUE_NETS.keys()) == 0:
         for tactic in config.TACTICS:
             str_tactic = config.tactic_string(tactic)
-            valueNet = ValueNet(config.VN_CLASS, config.VN_INPUT_SIZE, config.VN_HIDDEN_SIZE, config.VN_LAYERS,
-                                config.DECISION_LENGTH, '../valueNet/valueNet/' + str_tactic + '.torch').to(
+            valueNet = ValueNet(config.VN_INPUT_SIZE, config.VN_HIDDEN_SIZE, config.VN_LAYERS, config.DECISION_LENGTH,
+                                '../valueNet/valueNet/' + str_tactic + '.torch').to(
                 config.DEVICE)
             ss = joblib.load('../valueNet/scaler/standard/' + str_tactic + '.sc')
             ms = joblib.load('../valueNet/scaler/minmax/' + str_tactic + '.sc')

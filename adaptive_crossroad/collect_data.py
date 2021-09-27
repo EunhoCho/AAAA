@@ -12,7 +12,7 @@ def run_tactic(tactic, flow_number, start_tick):
 if __name__ == "__main__":
     tactics = config.TACTICS[:]
 
-    tactic_tqdm = tqdm(config.TACTICS)
+    tactic_tqdm = tqdm(config.TACTICS[52:])
     tactic_tqdm.set_description("Tactic")
     for tactic in tactic_tqdm:
         samples_tqdm = tqdm(range(int(config.TRAIN_RATE * config.ENV_SAMPLES)))

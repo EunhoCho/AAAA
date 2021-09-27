@@ -26,15 +26,15 @@ SMC_SAMPLES = 100
 
 # ValueNet Configuration
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-VN_CLASS = 1
 VN_INPUT_SIZE = 17
 VN_HIDDEN_SIZE = 2
 VN_LAYERS = 1
 
 # ValueNet Training Configuration
-TRAIN_RATE = 0.7
+TRAIN_RATE = 0.4
 VN_EPOCHS = 10000
 VN_LEARNING_RATE = 0.00001
+VN_BIDIRECTIONAL = True
 
 TACTICS = []
 for i in range(1, DECISION_LENGTH - 4):
