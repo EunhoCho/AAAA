@@ -6,18 +6,24 @@ from adaptive_crossroad import crossroad, config
 FIGURE_NAME = 'SMC_PMC_' + str(config.FLOW_NUMBER)
 
 if __name__ == "__main__":
-    for i in range(1):
-        targets = [('SMC', 'SMC', config.FLOW_NUMBER)]
-        # targets = [('SMC', 'SMC', config.FLOW_NUMBER),
-        #            ('VN', 'VN', config.FLOW_NUMBER),
-        #            ('GOD', 'GOD', config.FLOW_NUMBER),
-        #            ('DEFAULT', '', config.FLOW_NUMBER)]
+    for i in [70]:
+        targets = [('SMC', 'SMC')]
+        # targets = [('SMC', 'SMC'),
+        #            ('VN', 'VN'),
+        #            ('GOD', 'GOD'),
+        #            ('DEFAULT', '')]
 
         time = np.array(range(
             8640 // config.TEN_SECOND_PER_TICK // config.DECISION_LENGTH // config.TICK_PER_POINT)) / 360 * config.TEN_SECOND_PER_TICK * config.DECISION_LENGTH * config.TICK_PER_POINT
+
+        point_result_god = crossroad.run_crossroad('GOD', 'GOD', i)
+        plt.plot(time, point_result_god, label='GOD')
+
+        target_result = []
         for target in targets:
-            point_result = crossroad.run_crossroad(target[0], target[1], target[2])
-            plt.plot(time, [0, *point_result], label=target[0])
+            point_result = crossroad.run_crossroad(target[0], target[1], i)
+            plt.plot(time, point_result, label=target[0])
+            target_result.append(point_result - point_result_god)
 
         plt.title('Time - Number of Waiting Cars')
         plt.legend(loc='upper left')
@@ -26,3 +32,16 @@ if __name__ == "__main__":
         plt.xticks([0, 6, 12, 18, 24], [0, 6, 12, 18, 24])
         plt.savefig('../figure/' + FIGURE_NAME + '.png', dpi=300)
         plt.show()
+        plt.close()
+
+        if len(targets) > 0:
+            plt.title('Time - Diff of Number of Waiting Cars')
+            plt.legend(loc='upper left')
+            plt.xlabel('Hour')
+            plt.ylabel('Number of Cars')
+            plt.xticks([0, 6, 12, 18, 24], [0, 6, 12, 18, 24])
+
+            for j in range(len(target_result)):
+                plt.plot(time, target_result[j], label=targets[j][0])
+            plt.savefig('../figure/' + FIGURE_NAME + '_diff.png', dpi=300)
+            plt.show()
