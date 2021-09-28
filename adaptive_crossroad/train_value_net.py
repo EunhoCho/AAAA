@@ -8,23 +8,22 @@ from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from torch.autograd import Variable
 from tqdm import tqdm
 
-from adaptive_crossroad import config
 from adaptive_crossroad.value_net import ValueNet
-from environment import config as env_config
+from adaptive_crossroad import config
 
 if __name__ == "__main__":
-    tactic_tqdm = tqdm(config.TACTICS)
-    tactic_tqdm.set_description("Tactic")
+    tactic_tqdm = tqdm(config.TACTICS[42:])
+    tactic_tqdm.set_description("Train VN - Tactic")
     for tactic in tactic_tqdm:
         str_tactic = config.tactic_string(tactic)
         x = np.array([])
         y = np.array([])
 
-        with open('../learningData/x/' + str_tactic + ('_hard' if env_config.METHOD == 'HARD' else '') + '.csv', 'r',
+        with open('../learningData/x/' + str_tactic + ('_hard' if config.METHOD == 'HARD' else '') + '.csv', 'r',
                   newline='') as x_file:
             x = np.array(list(csv.reader(x_file))).astype(int)
 
-        with open('../learningData/y/' + str_tactic + ('_hard' if env_config.METHOD == 'HARD' else '') + '.csv', 'r',
+        with open('../learningData/y/' + str_tactic + ('_hard' if config.METHOD == 'HARD' else '') + '.csv', 'r',
                   newline='') as y_file:
             y = np.array(list(csv.reader(y_file))).astype(int)
 
@@ -45,7 +44,7 @@ if __name__ == "__main__":
         optimizer = torch.optim.Adam(valueNet.parameters(), lr=config.VN_LEARNING_RATE)
 
         epoch_tqdm = tqdm(range(config.VN_EPOCHS))
-        epoch_tqdm.set_description("epoch tqdm")
+        epoch_tqdm.set_description("Train VN")
 
         for epoch in epoch_tqdm:
             outputs = valueNet.forward(x_tensor_reshaped)
@@ -56,7 +55,7 @@ if __name__ == "__main__":
             optimizer.step()
 
             if epoch % 100 == 0:
-                epoch_tqdm.set_description("epoch tqdm loss %1.5f at %d" % (loss.item(), epoch))
+                epoch_tqdm.set_description("Train VN loss %1.5f at %d" % (loss.item(), epoch))
 
         torch.save(valueNet.state_dict(), '../valueNet/valueNet/' + str_tactic + '.torch')
 

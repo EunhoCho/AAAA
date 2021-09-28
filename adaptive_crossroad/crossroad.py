@@ -6,10 +6,9 @@ import torch
 from torch.autograd import Variable
 from tqdm import tqdm
 
-from adaptive_crossroad import config
 from adaptive_crossroad.value_net import ValueNet
-from environment import config as env_config
 from environment.sample import sample_environment, sample_environment_hard
+from adaptive_crossroad import config
 
 VALUE_NETS = {}
 
@@ -17,7 +16,7 @@ VALUE_NETS = {}
 def read_flow(number):
     if number == -1:
         file_name = '../flow/avg_flow.csv'
-    elif env_config.METHOD == 'HARD':
+    elif config.METHOD == 'HARD':
         file_name = '../flow/flow_' + str(number) + '_hard.csv'
     else:
         file_name = '../flow/flow_' + str(number) + '.csv'
@@ -90,6 +89,7 @@ def sim_run_crossroad(duration, decision, target_flow, default_num_cars):
 
 
 def decision_making_god(tick, num_cars, real_flow):
+    tick = tick % config.TOTAL_TICK
     tactics = config.TACTICS[:]
     opt_tactic = []
     min_value = -1
@@ -133,9 +133,9 @@ def decision_making_PMC(tick, num_cars, avg_flow, default_decision):
                     for k in range(1, config.DECISION_LENGTH):
                         target_inflow = avg_flow[tick + k + 1][i]
                         if j == 0:
-                            target_inflow = target_inflow - int(target_inflow * env_config.STDEV_RATE)
+                            target_inflow = target_inflow - int(target_inflow * config.STDEV_RATE)
                         else:
-                            target_inflow = target_inflow + int(target_inflow * env_config.STDEV_RATE)
+                            target_inflow = target_inflow + int(target_inflow * config.STDEV_RATE)
                         inflow += "(time = " + str(k) + " ? " + str(target_inflow) + " : "
 
                     inflow += "0" + ")" * (config.DECISION_LENGTH - 1) + " : 0)"
@@ -222,20 +222,21 @@ def decision_making_PMC(tick, num_cars, avg_flow, default_decision):
 
     return default_decision
 
-def decision_making_SMC(tick, num_cars, avg_flow, real_flow, erased_flow):
+
+def decision_making_SMC(tick, num_cars, avg_flow, real_flow, erased_flow, started, tactics=config.TACTICS):
     sample_flow = []
-    if env_config.METHOD == 'HARD':
+    if config.METHOD == 'HARD':
         env_result, erased_flow = sample_environment_hard(tick, tick + config.DECISION_LENGTH, avg_flow,
-                                                          real_flow[:tick], erased_flow, tick - config.DECISION_LENGTH)
+                                                          real_flow, erased_flow, started, tick - config.DECISION_LENGTH)
         for i in range(config.SMC_SAMPLES - 1):
             env_result, erased_flow_tmp = sample_environment_hard(tick, tick + config.DECISION_LENGTH, avg_flow,
-                                                                  real_flow[:tick], erased_flow, tick)
+                                                                  real_flow, erased_flow, started, tick)
             sample_flow.append(env_result)
     else:
         for i in range(config.SMC_SAMPLES):
             sample_flow.append(sample_environment(tick, tick + config.DECISION_LENGTH, avg_flow))
 
-    tactics = config.TACTICS[:]
+    tactics = tactics[:]
     opt_tactic = []
     min_value = -1
     for tactic in tactics:
@@ -250,10 +251,7 @@ def decision_making_SMC(tick, num_cars, avg_flow, real_flow, erased_flow):
     return opt_tactic, erased_flow
 
 
-def decision_making_VN(tick, num_cars, avg_flow, vn_data, default_decision):
-    if tick == 0:
-        return default_decision
-
+def decision_making_VN(vn_data):
     if len(VALUE_NETS.keys()) == 0:
         for tactic in config.TACTICS:
             str_tactic = config.tactic_string(tactic)
@@ -282,37 +280,20 @@ def decision_making_VN(tick, num_cars, avg_flow, vn_data, default_decision):
 
     tactic_result.sort(key=lambda x: x[0])
 
-    sample_flow = []
-    for i in range(config.SMC_SAMPLES):
-        sample_flow.append(sample_environment(tick + 1, tick + 10, avg_flow))
-
-    tactics = tactic_result[:5]
-    opt_tactic = []
-    min_value = -1
-    for tactic in tactics:
-        tactic = tactic[1]
-        result = 0
-        for flow in sample_flow:
-            result += sum(sim_run_crossroad(9, tactic, flow, num_cars))
-
-        if min_value == -1 or min_value > result:
-            opt_tactic = tactic
-            min_value = result
-
-    return opt_tactic
+    return tactic_result[0][1]
 
 
 def run_crossroad(name, crossroad_type, flow_number=config.FLOW_NUMBER, default_decision=None, start_tick=0,
-                  end_tick=8640 // config.TEN_SECOND_PER_TICK, tqdm_off=False):
+                  end_tick=config.TOTAL_TICK, tqdm_off=False):
     if default_decision is None:
         default_decision = config.DEFAULT_DECISION
 
-    with open('../log/x/' + name + '_' + str(flow_number) + ('_hard' if env_config.METHOD == 'HARD' else '') + '.csv',
+    with open('../log/x/' + name + '_' + str(flow_number) + ('_hard' if config.METHOD == 'HARD' else '') + '.csv',
               'w', newline='') as log_x_file:
         with open('../log/y/' + name + '_' + str(flow_number) +
-                  ('_hard' if env_config.METHOD == 'HARD' else '') + '.csv', 'w', newline='') as log_y_file:
+                  ('_hard' if config.METHOD == 'HARD' else '') + '.csv', 'w', newline='') as log_y_file:
             with open('../log/dm/' + name + '_' + str(flow_number) +
-                      ('_hard' if env_config.METHOD == 'HARD' else '') + '.csv', 'w', newline='') as log_dm_file:
+                      ('_hard' if config.METHOD == 'HARD' else '') + '.csv', 'w', newline='') as log_dm_file:
                 x_writer = csv.writer(log_x_file)
                 y_writer = csv.writer(log_y_file)
                 dm_writer = csv.writer(log_dm_file)
@@ -341,7 +322,7 @@ def run_crossroad(name, crossroad_type, flow_number=config.FLOW_NUMBER, default_
                     tick_tqdm = range(start_tick, end_tick)
                 else:
                     tick_tqdm = tqdm(range(start_tick, end_tick))
-                    tick_tqdm.set_description("Crossroad")
+                    tick_tqdm.set_description("Crossroad - " + name)
 
                 for i in tick_tqdm:
                     if i % config.DECISION_LENGTH == 0:
@@ -354,23 +335,29 @@ def run_crossroad(name, crossroad_type, flow_number=config.FLOW_NUMBER, default_
                         elif crossroad_type == 'PMC':
                             phase_length = decision_making_PMC(i, num_cars, avg_flow, default_decision)
                         elif crossroad_type == 'SMC':
-                            phase_length, erased_flow = decision_making_SMC(i, num_cars, avg_flow, target_flow, erased_flow)
+                            phase_length, erased_flow = decision_making_SMC(i, num_cars, avg_flow, target_flow,
+                                                                            erased_flow, start_tick)
                         elif crossroad_type == 'VN':
-                            phase_length = decision_making_VN(i, num_cars, avg_flow, vn_data, default_decision)
+                            if i == start_tick:
+                                phase_length = default_decision
+                            else:
+                                phase_length = decision_making_VN(vn_data)
+                        god_length = decision_making_god(i, num_cars, target_flow)
 
-                        dm_writer.writerow(phase_length)
+                        dm_writer.writerow([*phase_length, *god_length])
                         out_flow = generate_out_flow(phase_length)
                         vn_data = []
 
-                    num_cars = num_cars + target_flow[i] - out_flow[i % config.DECISION_LENGTH]
+                    num_cars = num_cars + target_flow[i % config.TOTAL_TICK] - out_flow[i % config.DECISION_LENGTH]
 
                     for j in range(8):
                         if num_cars[j] < 0:
                             num_cars[j] = 0
 
                     phase_result = phase_result + num_cars
-                    vn_data.append([i, *num_cars, *target_flow[i]])
-                    x_writer.writerow([i, *num_cars, *target_flow[i]])
+                    if crossroad_type == 'VN':
+                        vn_data.append([i % config.TOTAL_TICK, *num_cars, *target_flow[i % config.TOTAL_TICK]])
+                    x_writer.writerow([i % config.TOTAL_TICK, *num_cars, *target_flow[i % config.TOTAL_TICK]])
 
                     phase_tick += 1
                     while phase < 6 and phase_tick == phase_length[phase]:

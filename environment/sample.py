@@ -1,10 +1,11 @@
 import copy
 import csv
+import random
 
 import numpy as np
 from tqdm import tqdm
 
-from environment import config
+from adaptive_crossroad import config
 
 
 def sample_environment(start, end, avg_flow):
@@ -24,45 +25,50 @@ def sample_environment(start, end, avg_flow):
     return sample_environment
 
 
-def sample_environment_hard(start, end, avg_flow, cur_flow, target_flow=None, value_based=0):
+def sample_environment_hard(start, end, avg_flow, cur_flow, target_flow=None, started=0, value_based=0):
     if target_flow is None:
         target_flow = copy.deepcopy(avg_flow)
 
-    zero_value = []
+    if start == 0 and end == config.TOTAL_TICK:
+        sample_flow = []
+        for i in range(8):
+            flow = np.array([0] * (end - start))
+            for j in range(0, config.TOTAL_TICK):
+                for k in range(target_flow[j][i]):
+                    value = int(random.randrange(j - config.RANGE, j + config.RANGE))
+                    flow[value % config.TOTAL_TICK] += 1
+            sample_flow.append(flow)
+        return np.transpose(sample_flow), None
+
     for i in range(8):
-        residual = 0
-        k = 0
-        for j in range(max(value_based, 0), start):
-            residual += cur_flow[j][i]
-            while target_flow[k][i] == 0:
-                k += 1
-
-            while 0 < target_flow[k][i] <= residual:
-                residual -= target_flow[k][i]
-                target_flow[k][i] = 0
-                k += 1
-
-            if residual > 0:
-                target_flow[k][i] -= residual
-                residual = 0
-
-        zero_value.append(k)
+        for j in range(max(value_based, started), start):
+            value = cur_flow[j % config.TOTAL_TICK][i]
+            for k in range(-config.RANGE, config.RANGE):
+                target_flow[(j + k) % config.TOTAL_TICK][i] -= value / (2 * config.RANGE)
 
     sample_flow = []
     for i in range(8):
         flow = np.array([0] * (end - start))
-        for j in range(zero_value[i], min(end + config.STDEV, 8640 // config.TEN_SECOND_PER_TICK)):
-            for k in range(target_flow[j][i]):
-                if start == 0 and end == 8640 // config.TEN_SECOND_PER_TICK:
-                    value = int(np.random.normal(j, config.STDEV))
-                    flow[value % (8640 // config.TEN_SECOND_PER_TICK)] += 1
-                else:
-                    while True:
-                        value = int(np.random.normal(j, config.STDEV))
-                        if value >= start:
-                            if value < end:
-                                flow[value - start] += 1
-                            break
+
+        def add_flow(range_start, range_end):
+            for j in range(range_start, range_end):
+                for k in range(int(target_flow[j][i])):
+                    value = (int(random.randrange(j - config.RANGE, j + config.RANGE))) % config.TOTAL_TICK
+                    if start <= value < end:
+                        flow[value % config.TOTAL_TICK - start] += 1
+
+                value = int(random.randrange(j - config.RANGE, j + config.RANGE))
+                if start <= value < end:
+                    flow[value % config.TOTAL_TICK - start] += target_flow[j][i] - int(target_flow[j][i])
+
+        if (start % config.TOTAL_TICK) < config.RANGE:
+            add_flow((start - config.RANGE) % config.TOTAL_TICK, config.TOTAL_TICK)
+
+        if (end % config.TOTAL_TICK) > config.TOTAL_TICK - config.RANGE:
+            add_flow(0, (end + config.RANGE) % config.TOTAL_TICK)
+
+        add_flow(max(0, (start - config.RANGE) % config.TOTAL_TICK),
+                 min((end + config.RANGE) % config.TOTAL_TICK, config.TOTAL_TICK))
         sample_flow.append(flow)
 
     return np.transpose(sample_flow), target_flow
@@ -75,7 +81,7 @@ if __name__ == "__main__":
 
         residual = 0
         data = []
-        for i in range(8640 // config.TEN_SECOND_PER_TICK):
+        for i in range(config.TOTAL_TICK):
             value = 0
             residual += z(i)
 
@@ -98,13 +104,13 @@ if __name__ == "__main__":
         csv_writer.writerows(avg_flow)
 
     sample_tqdm = tqdm(range(config.SAMPLES))
-    sample_tqdm.set_description("sampling")
+    sample_tqdm.set_description("Flow Sampling")
     for i in sample_tqdm:
         if config.METHOD == 'HARD':
-            crossroad_data, erased = sample_environment_hard(0, 8640 // config.TEN_SECOND_PER_TICK, avg_flow, [])
+            crossroad_data, erased = sample_environment_hard(0, config.TOTAL_TICK, avg_flow, [])
 
         else:
-            crossroad_data = sample_environment(0, 8640 // config.TEN_SECOND_PER_TICK, avg_flow)
+            crossroad_data = sample_environment(0, config.TOTAL_TICK, avg_flow)
 
         with open('../flow/flow_' + str(i) + ('_hard' if config.METHOD == 'HARD' else '') + '.csv', 'w',
                   newline='') as csv_file:
