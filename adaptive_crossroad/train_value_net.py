@@ -12,7 +12,7 @@ from adaptive_crossroad.value_net import ValueNet
 from adaptive_crossroad import config
 
 if __name__ == "__main__":
-    tactic_tqdm = tqdm(config.TACTICS[42:])
+    tactic_tqdm = tqdm(config.TACTICS[:1])
     tactic_tqdm.set_description("Train VN - Tactic")
     for tactic in tactic_tqdm:
         str_tactic = config.tactic_string(tactic)

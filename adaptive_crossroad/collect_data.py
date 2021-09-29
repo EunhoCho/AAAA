@@ -28,5 +28,5 @@ if __name__ == "__main__":
             for j in range(24):
                 arguments.append((tactic, i, j))
 
-            with multiprocessing.Pool(processes=multiprocessing.cpu_count() // 2) as pool:
+            with multiprocessing.Pool(processes=multiprocessing.cpu_count()) as pool:
                 pool.starmap(run_tactic, arguments)
