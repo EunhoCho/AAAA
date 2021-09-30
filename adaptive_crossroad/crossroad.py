@@ -3,6 +3,7 @@ import csv
 import joblib
 import numpy as np
 import torch
+from sklearn.preprocessing import MinMaxScaler
 from torch.autograd import Variable
 from tqdm import tqdm
 
@@ -256,18 +257,18 @@ def decision_making_VN(vn_data):
         for tactic in config.TACTICS:
             str_tactic = config.tactic_string(tactic)
             valueNet = ValueNet(config.VN_INPUT_SIZE, config.VN_HIDDEN_SIZE, config.VN_LAYERS, config.DECISION_LENGTH,
-                                '../valueNet/valueNet/' + str_tactic + '.torch').to(
-                config.DEVICE)
-            ss = joblib.load('../valueNet/scaler/standard/' + str_tactic + '.sc')
-            ms = joblib.load('../valueNet/scaler/minmax/' + str_tactic + '.sc')
-            VALUE_NETS[str_tactic] = [valueNet, ss, ms]
+                                '../valueNet/valueNet/' + str_tactic + '.torch').to(config.DEVICE)
+            ss = joblib.load('../valueNet/scaler/' + str_tactic + '.sc')
+            VALUE_NETS[str_tactic] = [valueNet, ss]
+
+    ms = MinMaxScaler()
+    ms.fit([[config.VN_Y_SCALER_MIN], [config.VN_Y_SCALER_MAX]])
 
     tactic_result = []
     for tactic in config.TACTICS:
         str_tactic = config.tactic_string(tactic)
         valueNet = VALUE_NETS[str_tactic][0]
         ss = VALUE_NETS[str_tactic][1]
-        ms = VALUE_NETS[str_tactic][2]
 
         x_ss = ss.transform(vn_data)
         x_tensor = Variable(torch.Tensor(x_ss))

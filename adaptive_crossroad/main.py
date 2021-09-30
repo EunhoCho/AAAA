@@ -7,23 +7,24 @@ from adaptive_crossroad import config
 FIGURE_NAME = 'SMC_PMC_' + str(config.FLOW_NUMBER)
 
 if __name__ == "__main__":
-    for i in [85]:
-        targets = [('SMC', 'SMC'),
-                   ('VN', 'VN'),
+    start_tick = config.START_HOUR * 360 // config.TEN_SECOND_PER_TICK
+    end_tick = config.END_HOUR * 360 // config.TEN_SECOND_PER_TICK
+
+    for i in [84]:
+        targets = [('VN', 'VN'),
                    ('DEFAULT', '')]
         # targets = [('SMC', 'SMC'),
         #            ('VN', 'VN'),
         #            ('DEFAULT', '')]
 
-        time = np.array(range(
-            config.TOTAL_TICK // config.DECISION_LENGTH // config.TICK_PER_POINT)) / 360 * config.TEN_SECOND_PER_TICK * config.DECISION_LENGTH * config.TICK_PER_POINT
+        time = np.arange(config.START_HOUR, config.END_HOUR, config.TEN_SECOND_PER_TICK * config.DECISION_LENGTH * config.TICK_PER_POINT / 360)
 
-        point_result_god = np.array(crossroad.run_crossroad('GOD', 'GOD', i))
+        point_result_god = np.array(crossroad.run_crossroad('GOD', 'GOD', i, start_tick=start_tick, end_tick=end_tick))
         plt.plot(time, point_result_god, label='GOD')
 
         target_result = []
         for target in targets:
-            point_result = np.array(crossroad.run_crossroad(target[0], target[1], i))
+            point_result = np.array(crossroad.run_crossroad(target[0], target[1], start_tick=start_tick, end_tick=end_tick))
             plt.plot(time, point_result, label=target[0])
             target_result.append(point_result - point_result_god)
 
@@ -31,7 +32,7 @@ if __name__ == "__main__":
         plt.legend(loc='upper left')
         plt.xlabel('Hour')
         plt.ylabel('Number of Cars')
-        plt.xticks([0, 6, 12, 18, 24], [0, 6, 12, 18, 24])
+        plt.xticks([6, 12, 18, 24], [6, 12, 18, 24])
         plt.savefig('../figure/' + FIGURE_NAME + '.png', dpi=300)
         plt.show()
         plt.close()
@@ -44,6 +45,6 @@ if __name__ == "__main__":
             plt.legend(loc='upper left')
             plt.xlabel('Hour')
             plt.ylabel('Number of Cars')
-            plt.xticks([0, 6, 12, 18, 24], [0, 6, 12, 18, 24])
+            plt.xticks([6, 12, 18, 24], [6, 12, 18, 24])
             plt.savefig('../figure/' + FIGURE_NAME + '_diff.png', dpi=300)
             plt.show()

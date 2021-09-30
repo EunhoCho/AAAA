@@ -1,9 +1,13 @@
 import numpy as np
 import torch
 
+# Simulation Configuration
+FLOW_NUMBER = 80
+START_HOUR = 6
+END_HOUR = 24
+
 # Crossroad Configuration
 ENV_SAMPLES = 100
-FLOW_NUMBER = 80
 TICK_PER_POINT = 12
 TEN_SECOND_PER_TICK = 1
 TOTAL_TICK = 8640 // TEN_SECOND_PER_TICK
@@ -55,8 +59,11 @@ VN_LAYERS = 1
 # ValueNet Training Configuration
 TRAIN_RATE = 0.25
 VN_EPOCHS = 7000
+VN_MAX_LOSS = 0.005
 VN_LEARNING_RATE = 0.00001
 VN_BIDIRECTIONAL = True
+VN_Y_SCALER_MIN = 0
+VN_Y_SCALER_MAX = 20000
 
 TACTICS = []
 for i in range(1, DECISION_LENGTH - 4):

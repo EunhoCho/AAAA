@@ -12,7 +12,7 @@ from adaptive_crossroad.value_net import ValueNet
 from adaptive_crossroad import config
 
 if __name__ == "__main__":
-    tactic_tqdm = tqdm(config.TACTICS[:1])
+    tactic_tqdm = tqdm(config.TACTICS[52:])
     tactic_tqdm.set_description("Train VN - Tactic")
     for tactic in tactic_tqdm:
         str_tactic = config.tactic_string(tactic)
@@ -32,12 +32,12 @@ if __name__ == "__main__":
         x_tensor = Variable(torch.Tensor(x_ss))
         x_tensor_reshaped = torch.reshape(x_tensor, (int(x_tensor.shape[0] / config.DECISION_LENGTH),
                                                      config.DECISION_LENGTH, x_tensor.shape[1])).to(config.DEVICE)
-        joblib.dump(ss, '../valueNet/scaler/standard/' + str_tactic + '.sc', compress=True)
+        joblib.dump(ss, '../valueNet/scaler/' + str_tactic + '.sc', compress=True)
 
         ms = MinMaxScaler()
-        y_ms = ms.fit_transform(y)
+        ms.fit([[config.VN_Y_SCALER_MIN], [config.VN_Y_SCALER_MAX]])
+        y_ms = ms.transform(y)
         y_train_tensors = Variable(torch.Tensor(y_ms))
-        joblib.dump(ms, '../valueNet/scaler/minmax/' + str_tactic + '.sc', compress=True)
 
         valueNet = ValueNet(config.VN_INPUT_SIZE, config.VN_HIDDEN_SIZE, config.VN_LAYERS, config.DECISION_LENGTH).to(config.DEVICE)
         loss_function = torch.nn.MSELoss()
@@ -46,7 +46,8 @@ if __name__ == "__main__":
         epoch_tqdm = tqdm(range(config.VN_EPOCHS))
         epoch_tqdm.set_description("Train VN")
 
-        for epoch in epoch_tqdm:
+        epoch = 0
+        while True:
             outputs = valueNet.forward(x_tensor_reshaped)
             optimizer.zero_grad()
 
@@ -54,8 +55,17 @@ if __name__ == "__main__":
             loss.backward()
             optimizer.step()
 
+            epoch_tqdm.update(1)
+            epoch += 1
             if epoch % 100 == 0:
                 epoch_tqdm.set_description("Train VN loss %1.5f at %d" % (loss.item(), epoch))
+
+            if epoch >= config.VN_EPOCHS:
+                if loss.item() > config.VN_MAX_LOSS:
+                    epoch_tqdm.total += 1
+                else:
+                    epoch_tqdm.set_description("Train VN loss %1.5f at %d" % (loss.item(), epoch))
+                    break
 
         torch.save(valueNet.state_dict(), '../valueNet/valueNet/' + str_tactic + '.torch')
 
