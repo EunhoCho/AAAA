@@ -5,18 +5,10 @@
 
 ## Get Started
 * Make directories
+  * adaptive_network
   * figure
   * flow
-  * learningData
-    * x
-    * y
   * log
+    * cars
     * dm
-    * x
-    * y
-  * prism
   * valueNet
-    * scaler
-      * minmax
-      * standard
-    * valueNet
