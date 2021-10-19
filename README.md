@@ -5,10 +5,9 @@
 
 ## Get Started
 * Make directories
-  * adaptive_network
   * figure
   * flow
   * log
     * cars
     * dm
-  * valueNet
+  * model
