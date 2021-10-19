@@ -28,9 +28,11 @@ class AdaptiveNetwork(nn.Module):
     def __init__(self, path=''):
         super(AdaptiveNetwork, self).__init__()
         self.model = nn.Sequential(
-            nn.Linear(config.WAYS + 1, 256),
+            nn.Linear(config.WAYS + 1, int(math.log2(len(config.TACTICS)))),
             nn.ReLU(),
-            nn.Linear(256, len(config.TACTICS))
+            nn.Linear(int(math.log2(len(config.TACTICS))), 2 ** int(math.log2(len(config.TACTICS)) + 1)),
+            nn.ReLU(),
+            nn.Linear(2 ** int(math.log2(len(config.TACTICS)) + 1), len(config.TACTICS))
         )
         self.steps = 0
 

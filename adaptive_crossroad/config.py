@@ -6,6 +6,7 @@ TEN_SECOND_PER_TICK = 1
 assert 8640 % TEN_SECOND_PER_TICK == 0
 
 DECISION_LENGTH = 9
+MIN_PHASE = 0
 WAYS = 8
 STRAIGHT_OUT = 60
 LEFT_OUT = 20
@@ -23,11 +24,11 @@ assert OUTPUT_FLOW.shape[1] == WAYS
 TOTAL_TICK = 8640 // TEN_SECOND_PER_TICK
 
 TACTICS = []
-for i in range(1, DECISION_LENGTH - 4):
-    for j in range(1, DECISION_LENGTH - i - 3):
-        for k in range(1, DECISION_LENGTH - i - j - 2):
-            for l in range(1, DECISION_LENGTH - i - j - k - 1):
-                for m in range(1, DECISION_LENGTH - i - j - k - l):
+for i in range(MIN_PHASE, DECISION_LENGTH - MIN_PHASE * 4):
+    for j in range(MIN_PHASE, DECISION_LENGTH - i - MIN_PHASE * 3):
+        for k in range(MIN_PHASE, DECISION_LENGTH - i - j - MIN_PHASE * 2):
+            for l in range(MIN_PHASE, DECISION_LENGTH - i - j - k - MIN_PHASE):
+                for m in range(MIN_PHASE, DECISION_LENGTH - i - j - k - l):
                     TACTICS.append([i, j, k, l, m, DECISION_LENGTH - i - j - k - l - m])
 
 # Environment Configuration
@@ -57,10 +58,10 @@ ENV_TIME = np.arange(24) * 360 / TEN_SECOND_PER_TICK + 180 / TEN_SECOND_PER_TICK
 
 # Simulation Configuration
 START_HOUR = 0
-END_HOUR = 48
-GRAPH_START = 24
-GRAPH_END = 48
-TICK_PER_POINT = 12
+END_HOUR = 24
+GRAPH_START = 0
+GRAPH_END = 24
+TICK_PER_POINT = 6
 
 # AdaptiveNetwork Configuration
 AN_DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
