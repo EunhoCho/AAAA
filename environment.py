@@ -4,10 +4,32 @@ import random
 import numpy as np
 from tqdm import tqdm
 
-from adaptive_crossroad import config
+import config
 
 
-def sample_environment(avg_flow):
+def read_flow(name=''):
+    if name == '':
+        file_name = 'flow/avg_flow.csv'
+    else:
+        file_name = 'flow/' + name + '.csv'
+
+    flow_data = []
+    with open(file_name, "r", newline='') as f:
+        flow_reader = csv.reader(f)
+        flows = np.array([0] * config.cross_ways)
+        for i, row in enumerate(flow_reader):
+            flows = flows + np.array(row).astype(int)
+            if i % config.cross_ten_second_per_tick == 0:
+                flow_data.append(flows)
+                flows = np.array([0] * config.cross_ways)
+
+    return flow_data
+
+
+def sample_environment(avg_flow=None, name=None):
+    if avg_flow is None:
+        avg_flow = read_flow()
+
     sample_flow = []
     for i in range(config.cross_ways):
         flow = np.array([0] * config.cross_total_tick)
@@ -16,7 +38,14 @@ def sample_environment(avg_flow):
                 value = int(random.randrange(j - config.env_range, j + config.env_range))
                 flow[value % config.cross_total_tick] += 1
         sample_flow.append(flow)
-    return np.transpose(sample_flow)
+
+    flow = np.transpose(sample_flow)
+    if name is not None:
+        with open('flow/' + name + '.csv', 'w', newline='') as csv_file:
+            csv_writer = csv.writer(csv_file)
+            csv_writer.writerows(flow)
+
+    return flow
 
 
 if __name__ == "__main__":
@@ -43,16 +72,14 @@ if __name__ == "__main__":
         avg_flow.append(data)
 
     avg_flow = np.transpose(avg_flow)
+    for i in range(len(avg_flow)):
+        avg_flow[i] = np.ndarray(avg_flow[i])
 
-    with open('../flow/avg_flow.csv', 'w', newline='') as csv_file:
+    with open('flow/avg_flow.csv', 'w', newline='') as csv_file:
         csv_writer = csv.writer(csv_file)
         csv_writer.writerows(avg_flow)
 
     sample_tqdm = tqdm(range(config.env_samples))
     sample_tqdm.set_description("Flow Sampling")
     for i in sample_tqdm:
-        crossroad_data = sample_environment(avg_flow)
-
-        with open('../flow/flow_' + str(i) + '.csv', 'w', newline='') as csv_file:
-            csv_writer = csv.writer(csv_file)
-            csv_writer.writerows(crossroad_data)
+        crossroad_data = sample_environment(avg_flow, 'flow_' + str(i))
