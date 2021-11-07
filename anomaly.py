@@ -11,14 +11,14 @@ import crossroad
 import environment
 
 
-def generate_anomaly(start, end, name=None):
+def generate_anomaly(start, end, anomaly_mtth=config.anomaly_mtth, name=None):
     anomalies = []
     recent_anomaly = CarAccident(start - config.anomaly_duration - config.anomaly_after, 0)
 
     for i in range(start, end, config.cross_decision_length):
         if recent_anomaly.old(i):
             value = i - recent_anomaly.tick - config.anomaly_duration - config.anomaly_after
-            prob = 1 - 2 ** (-value / config.anomaly_mtth)
+            prob = 1 - 2 ** (-value / anomaly_mtth)
 
             if random.random() < prob:
                 recent_anomaly = CarAccident(i, random.randrange(0, 4))
@@ -95,7 +95,7 @@ class CarAccidentDetector(nn.Module):
         training_tqdm = tqdm(range(config.anomaly_d_episodes))
         for _ in training_tqdm:
             flow = environment.sample_environment()
-            anomalies = generate_anomaly(0, config.cross_total_tick)
+            anomalies = generate_anomaly(0, config.cross_total_tick, 5400)
             state = np.array([0] * config.cross_ways)
 
             data = []
@@ -141,32 +141,33 @@ class CarAccidentDetector(nn.Module):
 
         total = 0
         correct = 0
-        for i in range(0, config.cross_total_tick, config.cross_decision_length):
-            total += 1
-            result, next_state = crossroad.run_crossroad(i, flow, config.cross_tactics[
-                random.randrange(0, len(config.cross_tactics))], state, anomalies)
-            single_data = [i]
-            for j in range(config.cross_decision_length):
-                single_data.extend(result[j])
+        for _ in range(20):
+            for i in range(0, config.cross_total_tick, config.cross_decision_length):
+                total += 1
+                result, next_state = crossroad.run_crossroad(i, flow, config.cross_tactics[
+                    random.randrange(0, len(config.cross_tactics))], state, anomalies)
+                single_data = [i]
+                for j in range(config.cross_decision_length):
+                    single_data.extend(result[j])
 
-            anomaly_value = 4
-            for single_anomaly in anomalies:
-                if single_anomaly.valid(i):
-                    anomaly_value = single_anomaly.way
-                    break
+                anomaly_value = 4
+                for single_anomaly in anomalies:
+                    if single_anomaly.valid(i):
+                        anomaly_value = single_anomaly.way
+                        break
 
-            anomaly_tensor = self(torch.FloatTensor(single_data).to(config.cuda_device))
-            predicted_value = torch.argmax(anomaly_tensor)
+                anomaly_tensor = self(torch.FloatTensor(single_data).to(config.cuda_device))
+                predicted_value = torch.argmax(anomaly_tensor)
 
-            if anomaly_value == predicted_value:
-                correct += 1
+                if anomaly_value == predicted_value:
+                    correct += 1
 
         return correct / total
 
 
 if __name__ == "__main__":
-    # ad_model = CarAccidentDetector().to(config.cuda_device)
-    # ad_model.train_ad()
+    ad_model = CarAccidentDetector().to(config.cuda_device)
+    ad_model.train_ad()
 
     ad_model = CarAccidentDetector(path='model/ad.pth').to(config.cuda_device)
     print(ad_model.test())

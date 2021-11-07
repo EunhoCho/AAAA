@@ -72,14 +72,8 @@ if __name__ == "__main__":
         avg_flow.append(data)
 
     avg_flow = np.transpose(avg_flow)
-    for i in range(len(avg_flow)):
-        avg_flow[i] = np.ndarray(avg_flow[i])
+    avg_flow = np.array(avg_flow)
 
     with open('flow/avg_flow.csv', 'w', newline='') as csv_file:
         csv_writer = csv.writer(csv_file)
         csv_writer.writerows(avg_flow)
-
-    sample_tqdm = tqdm(range(config.env_samples))
-    sample_tqdm.set_description("Flow Sampling")
-    for i in sample_tqdm:
-        crossroad_data = sample_environment(avg_flow, 'flow_' + str(i))

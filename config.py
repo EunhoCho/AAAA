@@ -4,8 +4,8 @@ import torch
 # Crossroad configuration
 cross_decision_length = 12
 cross_default_decision = [2, 2, 2, 2, 2, 2]
-cross_out_left = 5
-cross_out_straight = 15
+cross_out_left = 10
+cross_out_straight = 30
 cross_phase_min = 1
 cross_ten_second_per_tick = 1
 cross_ways = 8
@@ -21,13 +21,19 @@ env_avg_24 = np.array([[29, 21, 15, 13, 18, 36, 67, 94, 94, 91, 85, 81, 76, 81, 
                        [2, 1, 1, 1, 1, 2, 5, 8, 9, 8, 7, 7, 6, 6, 6, 6, 6, 6, 6, 5, 4, 4, 4, 3],
                        [10, 7, 5, 4, 5, 8, 14, 22, 26, 26, 26, 27, 26, 28, 29, 29, 30, 32, 31, 28, 24, 23, 19, 15],
                        [2, 1, 1, 1, 1, 2, 3, 5, 6, 6, 6, 6, 6, 7, 7, 7, 7, 8, 7, 7, 6, 5, 4,
-                        3]]) * 10 / 360 * cross_ten_second_per_tick
+                        3]]) * 30 / 360 * cross_ten_second_per_tick
 
 # Simulation configuration
-sim_count = 1
+sim_count = 20
 sim_end = 24
 sim_start = 0
-sim_targets = ['AD-RL', 'ORL', 'DEFAULT']
+sim_targets = [
+    'AD-RL',
+    'ORL',
+    # 'SMC',
+    # 'RL-SMC',
+    'DEFAULT'
+]
 sim_tqdm_on = True
 
 # Graph figure configuration
@@ -45,7 +51,7 @@ cuda_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # RL configuration
 rl_batch_size = 64
-rl_episodes = 480
+rl_episodes = 500
 rl_epsilon_start = 0.9
 rl_epsilon_end = 0.05
 rl_epsilon_decay = 200
@@ -59,9 +65,9 @@ rl_smc_min_candidates = 5
 rl_smc_threshold = 0.25
 
 # Crossroad anomaly configuration
-anomaly_after = 360
-anomaly_duration = 180
-anomaly_mtth = 10800
+anomaly_after = 720
+anomaly_duration = 360
+anomaly_mtth = 108000
 
 # Anomaly detector configuration
 anomaly_d_episodes = 300

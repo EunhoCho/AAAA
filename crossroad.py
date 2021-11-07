@@ -169,14 +169,6 @@ def run(name, cross_type, start, end, inflow, anomalies, decision=None, tqdm_on=
                 ad_model = anomaly.CarAccidentDetector(path='model/ad.pth').to(config.cuda_device)
                 anomaly_value = 4
 
-            # if cross_type == 'AD-DQN':
-            #     ad_model = AD.AD()
-            #     ad_model.load_state_dict(torch.load('model/ad.pth'))
-            #     ad_model.eval()
-            #     rl_model = reinforcement_learning.DQN()
-            #     rl_model.load_state_dict(torch.load('model/ad_rl.pth'))
-            #     rl_model.eval()
-
             tick_tqdm = range(start, end, config.cross_decision_length)
             if tqdm_on:
                 tick_tqdm = tqdm(tick_tqdm)
