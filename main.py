@@ -2,7 +2,7 @@ import datetime
 
 from matplotlib import pyplot as plt
 
-import car_accident
+import anomaly
 import config
 import crossroad
 import environment
@@ -23,50 +23,34 @@ def graphize(result):
     return graphize_result
 
 
+def run_simulation(name, flow, has_anomaly=True):
+    if has_anomaly:
+        experiment_anomalies = anomaly.generate_anomaly(config.sim_start_tick, config.sim_end_tick, name)
+    else:
+        experiment_anomalies = []
+
+    god_result = crossroad.run(name, 'GOD', config.sim_start_tick, config.sim_end_tick, flow, experiment_anomalies)
+    plt.plot(config.graph_time, graphize(god_result), label='GOD')
+
+    for target in config.sim_targets:
+        result = crossroad.run(name, target, config.sim_start_tick, config.sim_end_tick, flow, experiment_anomalies)
+        plt.plot(config.graph_time, graphize(result), label=target)
+
+    plt.title('Time - Number of Waiting Cars')
+    plt.legend(loc='upper left')
+    plt.xlabel('Hour')
+    plt.ylabel('Number of Cars')
+    plt.xticks(list(range(config.graph_start, config.graph_end + 1, 6)),
+               list(range(config.graph_start, config.graph_end + 1, 6)))
+    plt.savefig('figure/' + name + '.png', dpi=300)
+    plt.show()
+    plt.close()
+
+
 if __name__ == "__main__":
     for i in range(config.sim_count):
         experiment_name = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-
         experiment_flow = environment.sample_environment(name=experiment_name)
-        experiment_accidents = []
 
-        god_result = crossroad.run(experiment_name, 'GOD', config.sim_start_tick, config.sim_end_tick, experiment_flow,
-                                   experiment_accidents)
-        plt.plot(config.graph_time, graphize(god_result), label='GOD')
-
-        for target in config.sim_targets:
-            result = crossroad.run(experiment_name, target, config.sim_start_tick, config.sim_end_tick,
-                                   experiment_flow, experiment_accidents)
-            plt.plot(config.graph_time, graphize(result), label=target)
-
-        plt.title('Time - Number of Waiting Cars')
-        plt.legend(loc='upper left')
-        plt.xlabel('Hour')
-        plt.ylabel('Number of Cars')
-        plt.xticks(list(range(config.graph_start, config.graph_end + 1, 6)),
-                   list(range(config.graph_start, config.graph_end + 1, 6)))
-        plt.savefig('figure/' + experiment_name + '.png', dpi=300)
-        plt.show()
-        plt.close()
-
-        experiment_name = experiment_name + '_accident'
-        experiment_accidents = car_accident.generate_accident(config.sim_start_tick, config.sim_end_tick,
-                                                              experiment_name)
-        god_result = crossroad.run(experiment_name, 'GOD', config.sim_start_tick, config.sim_end_tick, experiment_flow,
-                                   experiment_accidents)
-        plt.plot(config.graph_time, graphize(god_result), label='GOD')
-
-        for target in config.sim_targets:
-            result = crossroad.run(experiment_name, target, config.sim_start_tick, config.sim_end_tick,
-                                   experiment_flow, experiment_accidents)
-            plt.plot(config.graph_time, graphize(result), label=target)
-
-        plt.title('Time - Number of Waiting Cars')
-        plt.legend(loc='upper left')
-        plt.xlabel('Hour')
-        plt.ylabel('Number of Cars')
-        plt.xticks(list(range(config.graph_start, config.graph_end + 1, 6)),
-                   list(range(config.graph_start, config.graph_end + 1, 6)))
-        plt.savefig('figure/' + experiment_name + '.png', dpi=300)
-        plt.show()
-        plt.close()
+        # run_simulation(experiment_name, experiment_flow, False)
+        run_simulation(experiment_name + '_anomaly', experiment_flow)

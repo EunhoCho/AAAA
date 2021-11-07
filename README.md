@@ -11,6 +11,7 @@
     * figure
     * flow
     * log
+        * anomaly
         * cars
         * dm
     * model
