@@ -1,13 +1,12 @@
 import csv
-import random
 
 import numpy as np
 import torch
 from tqdm import tqdm
 
+import SPRT
 import anomaly
 import config
-import environment
 import reinforcement_learning
 
 
@@ -46,42 +45,50 @@ def decision_making_god(tick, inflow, state, anomalies):
     return opt_tactic
 
 
-def decision_making_SMC(tick, avg_flow, state, tactics=None):
-    sample_flows = []
-    for i in range(config.smc_num_samples):
-        sample_flow = []
-        for j in range(config.cross_decision_length):
-            flow = []
-            for k in range(config.cross_ways):
-                avg_number = avg_flow[tick % config.cross_total_tick][k]
-                low_number = int(config.smc_flow_rate_low * avg_number)
-                high_number = int(config.smc_flow_rate_high * avg_number)
-
-                if low_number == high_number:
-                    flow.append(high_number)
-
-                else:
-                    flow.append(random.randrange(low_number, high_number + 1))
-
-            sample_flow.append(flow)
-        sample_flows.append(sample_flow)
-
+def decision_making_SMC(tick, state, tactics=None):
     if tactics is None:
         tactics = config.cross_tactics.copy()
 
-    opt_tactic = None
-    min_value = -1
+    sprt_verifier = SPRT.SPRT(tick)
 
-    for tactic in tactics:
-        sum_result = 0
-        for sample in sample_flows:
-            result, _ = run_crossroad(0, sample, tactic, state)
-            sum_result += sum(sum(result))
+    target_num = max(sum(state), config.cross_decision_length * 10)
+    var = max(sum(state), config.cross_decision_length * 10)
+    plus_trend = None
 
-        if min_value == -1 or min_value > sum_result:
-            opt_tactic = tactic
-            min_value = sum_result
-    return opt_tactic
+    while True:
+        results = []
+        for tactic in tactics:
+            prob = sprt_verifier.verify_simulation(state, tactic, target_num)
+
+            results.append((prob, tactic))
+
+        results.sort(key=lambda x: -x[0])
+        i = 0
+        while i < len(results):
+            if results[i][0] >= 0.95:
+                i += 1
+            else:
+                break
+
+        if i == 0:
+            if plus_trend is not None and not plus_trend:
+                var /= 2
+            target_num += var
+            plus_trend = True
+
+        elif i == 1:
+            return results[i][1]
+
+        else:
+            if target_num <= 0:
+                return results[0][1]
+
+            tactics = []
+            for j in range(i):
+                tactics.append(results[j][1])
+            if plus_trend is not None and plus_trend:
+                var /= 2
+            target_num -= var
 
 
 def decision_making_rl(tick, state, rl_model):
@@ -89,7 +96,7 @@ def decision_making_rl(tick, state, rl_model):
     return rl_model.model(state_tensor).data.min(0)[1].view(1, 1)
 
 
-def decision_making_rl_smc(tick, avg_flow, state, rl_model):
+def decision_making_rl_smc(tick, state, rl_model):
     state_tensor = torch.FloatTensor([*state, tick]).to(config.cuda_device)
     result = rl_model.model(state_tensor).data.sort()
     threshold_value = result.values[0] * (config.rl_smc_threshold + 1)
@@ -100,7 +107,7 @@ def decision_making_rl_smc(tick, avg_flow, state, rl_model):
         candidates.append(config.cross_tactics[result.indices[i]])
         i += 1
 
-    return decision_making_SMC(tick, avg_flow, state, candidates)
+    return decision_making_SMC(tick, state, candidates)
 
 
 def decision_making_a_rl(tick, state, rl_model, anomaly_value):
@@ -155,9 +162,6 @@ def run(name, cross_type, start, end, inflow, anomalies, decision=None, tqdm_on=
             state = np.array([0] * config.cross_ways)
             result = []
 
-            if cross_type == 'SMC' or cross_type == 'RL-SMC':
-                avg_flow = environment.read_flow()
-
             if cross_type == 'RL' or cross_type == 'RL-SMC' or cross_type == 'ORL':
                 rl_model = reinforcement_learning.DQN(path='model/rl.pth').to(config.cuda_device)
 
@@ -178,12 +182,12 @@ def run(name, cross_type, start, end, inflow, anomalies, decision=None, tqdm_on=
                 if cross_type == 'GOD':
                     decision = decision_making_god(i, inflow, state, anomalies)
                 elif cross_type == 'SMC':
-                    decision = decision_making_SMC(i, avg_flow, state)
+                    decision = decision_making_SMC(i, state)
                 elif cross_type == 'RL' or cross_type == 'ORL':
                     tactic = decision_making_rl(i, state, rl_model)
                     decision = config.cross_tactics[tactic]
                 elif cross_type == 'RL-SMC':
-                    decision = decision_making_rl_smc(i, avg_flow, state, rl_model)
+                    decision = decision_making_rl_smc(i, state, rl_model)
                 elif cross_type == 'A-RL':
                     anomaly_value = 4
                     for single_anomaly in anomalies:

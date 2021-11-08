@@ -24,15 +24,15 @@ env_avg_24 = np.array([[29, 21, 15, 13, 18, 36, 67, 94, 94, 91, 85, 81, 76, 81, 
                         3]]) * 30 / 360 * cross_ten_second_per_tick
 
 # Simulation configuration
-sim_count = 20
+sim_count = 1
 sim_end = 24
 sim_start = 0
 sim_targets = [
     'AD-RL',
     'ORL',
-    # 'SMC',
-    # 'RL-SMC',
-    'DEFAULT'
+    'SMC',
+    'RL-SMC',
+    # 'DEFAULT'
 ]
 sim_tqdm_on = True
 
@@ -42,7 +42,12 @@ graph_end = 24
 graph_start = 0
 
 # SMC configuration
-smc_num_samples = 2500
+smc_sprt_alpha = 0.2
+smc_sprt_beta = 0.2
+smc_sprt_delta = 0.01
+smc_max_prob = 95
+smc_min_samples = 10
+smc_max_samples = 1000
 smc_flow_rate_high = 1.25
 smc_flow_rate_low = 0.75
 

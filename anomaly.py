@@ -84,7 +84,7 @@ class CarAccidentDetector(nn.Module):
                                    momentum=config.anomaly_d_momentum)
 
         if path != '':
-            self.load_state_dict(torch.load(path))
+            self.load_state_dict(torch.load(path, map_location=config.cuda_device))
             self.eval()
 
     def forward(self, data):

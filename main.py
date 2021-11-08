@@ -46,36 +46,25 @@ def run_simulation(name, flow, has_anomaly=True):
     else:
         experiment_anomalies = []
 
-    god_result = crossroad.run(name, 'GOD', config.sim_start_tick, config.sim_end_tick, flow, experiment_anomalies)
-    graphized_god_result = np.array(graphize(god_result))
-    plt.plot(config.graph_time, graphized_god_result, label='GOD')
-    final_result.append(sum(god_result))
-
     graphized_result = []
     for target in config.sim_targets:
         result = crossroad.run(name, target, config.sim_start_tick, config.sim_end_tick, flow, experiment_anomalies)
         graphized_target_result = np.array(graphize(result))
         graphized_result.append(graphized_target_result)
         plt.plot(config.graph_time, graphized_target_result, label=target)
-        final_result.append(sum(god_result))
+        final_result.append(sum(result))
 
     plt.title('Time - Number of Waiting Cars')
     plot_base(experiment_anomalies)
     plt.savefig('figure/' + name + '.png', dpi=300)
-    plt.close()
-
-    plt.title('Time - Number of Waiting Cars - GOD')
-    for i in range(len(config.sim_targets)):
-        plt.plot(config.graph_time, graphized_result[i] - graphized_god_result, label=config.sim_targets[i])
-    plot_base(experiment_anomalies)
-    plt.savefig('figure/' + name + '_diff.png', dpi=300)
+    plt.show()
     plt.close()
 
     return np.array(final_result)
 
 
 if __name__ == "__main__":
-    result = np.array([0] * len(config.sim_targets))
+    result = np.array([0.0] * (len(config.sim_targets) + 1))
     for i in range(config.sim_count):
         experiment_name = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         experiment_flow = environment.sample_environment(name=experiment_name)
@@ -83,3 +72,8 @@ if __name__ == "__main__":
         # single_result = run_simulation(experiment_name + '_clean', experiment_flow, False)
         single_result = run_simulation(experiment_name, experiment_flow)
         result += single_result
+
+    result /= config.sim_count
+    result /= config.cross_num_decisions
+
+    print(result)

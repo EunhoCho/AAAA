@@ -2,7 +2,6 @@ import csv
 import random
 
 import numpy as np
-from tqdm import tqdm
 
 import config
 

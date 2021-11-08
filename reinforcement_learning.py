@@ -50,7 +50,7 @@ class DQN(nn.Module):
         self.optimizer = optim.Adam(self.parameters(), config.rl_learning_rate)
 
         if path != '':
-            self.load_state_dict(torch.load(path))
+            self.load_state_dict(torch.load(path, map_location=config.cuda_device))
             self.eval()
 
     def select_tactic(self, state):
