@@ -4,9 +4,10 @@ import numpy as np
 import torch
 from tqdm import tqdm
 
-import SPRT
+import statistical_model_checking
 import anomaly
 import config
+import environment
 import reinforcement_learning
 
 
@@ -45,50 +46,16 @@ def decision_making_god(tick, inflow, state, anomalies):
     return opt_tactic
 
 
-def decision_making_SMC(tick, state, tactics=None):
+def decision_making_SMC(tick, state, is_sprt=False, tactics=None):
     if tactics is None:
         tactics = config.cross_tactics.copy()
 
-    sprt_verifier = SPRT.SPRT(tick)
+    if is_sprt:
+        verifier = statistical_model_checking.SPRT(tick, state, tactics)
+    else:
+        verifier = statistical_model_checking.SimpleMonteCarloChecker(tick, state, tactics)
 
-    target_num = max(sum(state), config.cross_decision_length * 10)
-    var = max(sum(state), config.cross_decision_length * 10)
-    plus_trend = None
-
-    while True:
-        results = []
-        for tactic in tactics:
-            prob = sprt_verifier.verify_simulation(state, tactic, target_num)
-
-            results.append((prob, tactic))
-
-        results.sort(key=lambda x: -x[0])
-        i = 0
-        while i < len(results):
-            if results[i][0] >= 0.95:
-                i += 1
-            else:
-                break
-
-        if i == 0:
-            if plus_trend is not None and not plus_trend:
-                var /= 2
-            target_num += var
-            plus_trend = True
-
-        elif i == 1:
-            return results[i][1]
-
-        else:
-            if target_num <= 0:
-                return results[0][1]
-
-            tactics = []
-            for j in range(i):
-                tactics.append(results[j][1])
-            if plus_trend is not None and plus_trend:
-                var /= 2
-            target_num -= var
+    return verifier.choose_decision()
 
 
 def decision_making_rl(tick, state, rl_model):
@@ -96,7 +63,7 @@ def decision_making_rl(tick, state, rl_model):
     return rl_model.model(state_tensor).data.min(0)[1].view(1, 1)
 
 
-def decision_making_rl_smc(tick, state, rl_model):
+def decision_making_rl_smc(tick, state, rl_model, is_sprt=False):
     state_tensor = torch.FloatTensor([*state, tick]).to(config.cuda_device)
     result = rl_model.model(state_tensor).data.sort()
     threshold_value = result.values[0] * (config.rl_smc_threshold + 1)
@@ -107,7 +74,7 @@ def decision_making_rl_smc(tick, state, rl_model):
         candidates.append(config.cross_tactics[result.indices[i]])
         i += 1
 
-    return decision_making_SMC(tick, state, candidates)
+    return decision_making_SMC(tick, state, is_sprt, candidates)
 
 
 def decision_making_a_rl(tick, state, rl_model, anomaly_value):

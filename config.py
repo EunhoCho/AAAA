@@ -32,7 +32,7 @@ sim_targets = [
     'ORL',
     'SMC',
     'RL-SMC',
-    # 'DEFAULT'
+    'DEFAULT'
 ]
 sim_tqdm_on = True
 
