@@ -65,15 +65,22 @@ def run_simulation(name, flow, has_anomaly=True):
 
 if __name__ == "__main__":
     result = np.array([0.0] * (len(config.sim_targets) + 1))
+    time = np.array([datetime.timedelta] * (len(config.sim_targets) + 1))
     for i in range(config.sim_count):
         experiment_name = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         experiment_flow = environment.sample_environment(name=experiment_name)
 
         # single_result = run_simulation(experiment_name + '_clean', experiment_flow, False)
-        single_result = run_simulation(experiment_name, experiment_flow)
+        single_result, single_time = run_simulation(experiment_name, experiment_flow)
         result += single_result
+        time += single_time
+
+        print('run ', i)
+        print(single_result)
+        print(single_time)
 
     result /= config.sim_count
+    time /= config.sim_count
     result /= config.cross_num_decisions
 
     print(result)

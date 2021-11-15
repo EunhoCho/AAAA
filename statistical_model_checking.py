@@ -39,7 +39,9 @@ class StatisticalModelChecker:
         var = max(sum(self.state), config.cross_decision_length * 10)
         plus_trend = None
 
-        while True:
+        tries = 0
+        while tries < config.smc_max_tries:
+            tries += 1
             results = []
             for tactic in self.tactics:
                 prob = self.get_probability(tactic, target_num)
@@ -75,6 +77,8 @@ class StatisticalModelChecker:
 
             if var == 0:
                 return self.tactics[0]
+
+        return self.tactics[0]
 
     def get_probability(self, decision, target):
         return 0

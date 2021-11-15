@@ -45,6 +45,7 @@ graph_start = 0
 smc_sprt_alpha = 0.2
 smc_sprt_beta = 0.2
 smc_sprt_delta = 0.01
+smc_max_tries = 10000
 smc_max_prob = 95
 smc_min_samples = 10
 smc_max_samples = 1000

@@ -4,11 +4,10 @@ import numpy as np
 import torch
 from tqdm import tqdm
 
+import rl
 import statistical_model_checking
 import anomaly
 import config
-import environment
-import reinforcement_learning
 
 
 def generate_outflow(decision, current_anomaly):
@@ -130,10 +129,10 @@ def run(name, cross_type, start, end, inflow, anomalies, decision=None, tqdm_on=
             result = []
 
             if cross_type == 'RL' or cross_type == 'RL-SMC' or cross_type == 'ORL':
-                rl_model = reinforcement_learning.DQN(path='model/rl.pth').to(config.cuda_device)
+                rl_model = rl.DQN(path='model/rl.pth').to(config.cuda_device)
 
             if cross_type == 'A-RL' or cross_type == 'AD-RL':
-                rl_model = reinforcement_learning.DQN(True, path='model/a_rl.pth').to(
+                rl_model = rl.DQN(True, path='model/a_rl.pth').to(
                     config.cuda_device)
 
             if cross_type == 'AD-RL':
