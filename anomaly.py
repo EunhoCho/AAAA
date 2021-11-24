@@ -1,4 +1,5 @@
 import csv
+import math
 import random
 
 import numpy as np
@@ -17,8 +18,7 @@ def generate_anomaly(start, end, anomaly_mtth=config.anomaly_mtth, name=None):
 
     for i in range(start, end, config.cross_decision_length):
         if recent_anomaly.old(i):
-            value = i - recent_anomaly.tick - config.anomaly_duration - config.anomaly_after
-            prob = 1 - 2 ** (-value / anomaly_mtth)
+            prob = 1 - math.exp(-config.anomaly_duration / anomaly_mtth)
 
             if random.random() < prob:
                 recent_anomaly = CarAccident(i, random.randrange(0, 4))
@@ -95,7 +95,7 @@ class CarAccidentDetector(nn.Module):
         training_tqdm = tqdm(range(config.anomaly_d_episodes))
         for _ in training_tqdm:
             flow = environment.sample_environment()
-            anomalies = generate_anomaly(0, config.cross_total_tick, 5400)
+            anomalies = generate_anomaly(0, config.cross_total_tick, 200)
             state = np.array([0] * config.cross_ways)
 
             data = []

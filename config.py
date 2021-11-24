@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 import torch
 
@@ -24,7 +26,7 @@ env_avg_24 = np.array([[29, 21, 15, 13, 18, 36, 67, 94, 94, 91, 85, 81, 76, 81, 
                         3]]) * 30 / 360 * cross_ten_second_per_tick
 
 # Simulation configuration
-sim_count = 1
+sim_count = 20
 sim_end = 24
 sim_start = 0
 sim_targets = [
@@ -71,9 +73,9 @@ rl_smc_min_candidates = 5
 rl_smc_threshold = 0.25
 
 # Crossroad anomaly configuration
-anomaly_after = 720
+anomaly_after = 0
 anomaly_duration = 360
-anomaly_mtth = 108000
+anomaly_mtth = 1080
 
 # Anomaly detector configuration
 anomaly_d_episodes = 300
@@ -107,7 +109,6 @@ graph_end_tick = graph_end * 360 // cross_ten_second_per_tick
 graph_start_tick = graph_start * 360 // cross_ten_second_per_tick
 graph_time = np.arange(graph_start, graph_end,
                        cross_ten_second_per_tick * cross_decision_length * graph_decision_per_point / 360)
-
 
 def tactic_string(tactic):
     return str(tactic[0]) + '_' + str(tactic[1]) + '_' + str(tactic[2]) + '_' + str(tactic[3]) + '_' + str(

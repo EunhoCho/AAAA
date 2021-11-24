@@ -40,6 +40,7 @@ def plot_base(anomalies=None):
 
 def run_simulation(name, flow, has_anomaly=True):
     final_result = []
+    time_result = []
 
     if has_anomaly:
         experiment_anomalies = anomaly.generate_anomaly(config.sim_start_tick, config.sim_end_tick, name=name)
@@ -48,24 +49,29 @@ def run_simulation(name, flow, has_anomaly=True):
 
     graphized_result = []
     for target in config.sim_targets:
+        start = datetime.datetime.now()
         result = crossroad.run(name, target, config.sim_start_tick, config.sim_end_tick, flow, experiment_anomalies)
+        end = datetime.datetime.now()
+        timed = end - start
+
         graphized_target_result = np.array(graphize(result))
         graphized_result.append(graphized_target_result)
         plt.plot(config.graph_time, graphized_target_result, label=target)
         final_result.append(sum(result))
+        time_result.append(timed)
 
     plt.title('Time - Number of Waiting Cars')
     plot_base(experiment_anomalies)
     plt.savefig('figure/' + name + '.png', dpi=300)
-    plt.show()
+    # plt.show()
     plt.close()
 
-    return np.array(final_result)
+    return np.array(final_result) / config.cross_num_decisions, np.array(time_result) / config.cross_num_decisions
 
 
 if __name__ == "__main__":
-    result = np.array([0.0] * (len(config.sim_targets) + 1))
-    time = np.array([datetime.timedelta] * (len(config.sim_targets) + 1))
+    result = np.array([0.0] * (len(config.sim_targets)))
+    time = np.array([datetime.timedelta()] * (len(config.sim_targets)))
     for i in range(config.sim_count):
         experiment_name = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         experiment_flow = environment.sample_environment(name=experiment_name)
@@ -81,6 +87,9 @@ if __name__ == "__main__":
 
     result /= config.sim_count
     time /= config.sim_count
-    result /= config.cross_num_decisions
 
-    print(result)
+    for i, target in enumerate(config.sim_targets):
+        print()
+        print(target)
+        print('average cars: ', result[i])
+        print('average time: ', time[i])
