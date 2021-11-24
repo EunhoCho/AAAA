@@ -73,7 +73,7 @@ rl_smc_min_candidates = 5
 rl_smc_threshold = 0.25
 
 # Crossroad anomaly configuration
-anomaly_after = 0
+anomaly_after = 720
 anomaly_duration = 360
 anomaly_mtth = 2160
 
