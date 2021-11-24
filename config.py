@@ -75,7 +75,7 @@ rl_smc_threshold = 0.25
 # Crossroad anomaly configuration
 anomaly_after = 0
 anomaly_duration = 360
-anomaly_mtth = 1080
+anomaly_mtth = 2160
 
 # Anomaly detector configuration
 anomaly_d_episodes = 300
