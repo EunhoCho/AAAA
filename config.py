@@ -28,7 +28,7 @@ sim_count = 20
 sim_end = 24
 sim_start = 0
 sim_targets = [
-    'A-RL',
+    'AAAA',
     'ORL',
     'SMC',
     'DEFAULT'

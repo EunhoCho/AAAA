@@ -120,10 +120,10 @@ def run(name, cross_type, start, end, inflow, anomalies, decision=None, tqdm_on=
             state = np.array([0] * config.cross_ways)
             result = []
 
-            if cross_type == 'RL' or cross_type == 'ORL':
+            if cross_type == 'RL' or cross_type == 'A-RL' or cross_type == 'ORL':
                 rl_model = rl.DQN(path='model/rl.pth').to(config.cuda_device)
 
-            if cross_type == 'A-RL' or cross_type == 'AD-RL':
+            if cross_type == 'AAAA':
                 a_rl_models = [
                     rl.DQN(path='model/a_rl_0.pth').to(config.cuda_device),
                     rl.DQN(path='model/a_rl_1.pth').to(config.cuda_device),
@@ -131,9 +131,6 @@ def run(name, cross_type, start, end, inflow, anomalies, decision=None, tqdm_on=
                     rl.DQN(path='model/a_rl_3.pth').to(config.cuda_device)
                 ]
                 anomaly_value = 4
-
-            if cross_type == 'AD-RL':
-                ad_model = anomaly.CarAccidentDetector(path='model/ad.pth').to(config.cuda_device)
 
             tick_tqdm = range(start, end, config.cross_decision_length)
             if tqdm_on:
@@ -146,7 +143,7 @@ def run(name, cross_type, start, end, inflow, anomalies, decision=None, tqdm_on=
                 elif cross_type == 'RL' or cross_type == 'ORL':
                     tactic = decision_making_rl(i, state, rl_model)
                     decision = config.cross_tactics[tactic]
-                elif cross_type == 'A-RL' or cross_type == 'AD-RL':
+                elif cross_type == 'AAAA':
                     if anomaly_value != 4:
                         target_model = a_rl_models[anomaly_value]
                     else:
@@ -165,18 +162,12 @@ def run(name, cross_type, start, end, inflow, anomalies, decision=None, tqdm_on=
                 if cross_type == 'ORL':
                     rl_model.push_optimize([*state, i], tactic, sum(sum(phase_result)),
                                            [*next_state, i + config.cross_decision_length])
-                elif cross_type == 'A-RL':
+                elif cross_type == 'AAAA':
                     anomaly_value = 4
                     for single_anomaly in anomalies:
                         if single_anomaly.valid(i - config.cross_decision_length):
                             anomaly_value = single_anomaly.way
                             break
-                elif cross_type == 'AD-RL':
-                    data = [i]
-                    for j in range(config.cross_decision_length):
-                        data.extend(phase_result[j])
-                    anomaly_tensor = ad_model(torch.FloatTensor(data).to(config.cuda_device))
-                    anomaly_value = torch.argmax(anomaly_tensor)
 
                 state = next_state
 

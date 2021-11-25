@@ -131,9 +131,9 @@ class DQN(nn.Module):
 
 
 if __name__ == "__main__":
-    rl_model = DQN().to(config.cuda_device)
-    rl_model.train_rl()
+    # rl_model = DQN().to(config.cuda_device)
+    # rl_model.train_rl()
 
     for i in range(4):
-        a_rl_model = DQN(path='model/rl_new.pth').to(config.cuda_device)
+        a_rl_model = DQN(path='model/rl.pth').to(config.cuda_device)
         a_rl_model.train_rl(i)
