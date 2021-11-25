@@ -5,7 +5,6 @@ from collections import deque, namedtuple
 import numpy as np
 import torch
 from torch import nn, optim
-from tqdm import tqdm
 
 import anomaly
 import config
@@ -30,12 +29,9 @@ class Memory(object):
 
 
 class DQN(nn.Module):
-    def __init__(self, is_anomaly_aware=False, hidden_layer=config.rl_hidden_layer, path=''):
+    def __init__(self, hidden_layer=config.rl_hidden_layer, path=''):
         super(DQN, self).__init__()
-        self.is_anomaly_aware = is_anomaly_aware
         self.input_size = config.cross_ways + 1
-        if is_anomaly_aware:
-            self.input_size += 1
 
         self.model = nn.Sequential(
             nn.Linear(self.input_size, hidden_layer),
@@ -94,47 +90,35 @@ class DQN(nn.Module):
         state_tensor = torch.FloatTensor(np.array([state])).to(config.cuda_device)
         tactic = self.select_tactic(state_tensor)
 
-        if self.is_anomaly_aware:
-            result, next_state = crossroad.run_crossroad(tick, flow, config.cross_tactics[tactic], state[:-2],
-                                                         anomalies)
-
-            anomaly_value = 4
-            for single_anomaly in anomalies:
-                if single_anomaly.valid(tick):
-                    anomaly_value = single_anomaly.way
-                    break
-
-            next_state = [*next_state, tick + config.cross_decision_length, anomaly_value]
-        else:
-            result, next_state = crossroad.run_crossroad(tick, flow, config.cross_tactics[tactic], state[:-1],
-                                                         anomalies)
-            next_state = [*next_state, tick + config.cross_decision_length]
+        result, next_state = crossroad.run_crossroad(tick, flow, config.cross_tactics[tactic], state[:-1],
+                                                     anomalies)
+        next_state = [*next_state, tick + config.cross_decision_length]
         reward = sum(sum(result))
 
-        self.push_optimize(state, tactic, reward, next_state)
+        self.push_optimize(np.array(state), tactic, reward, np.array(next_state))
         return next_state, reward
 
-    def train_rl(self):
-        train_tqdm = tqdm(range(config.rl_episodes))
-        for _ in train_tqdm:
+    def train_rl(self, anomaly_value=4):
+        for j in range(config.rl_episodes if anomaly_value == 4 else config.rl_episodes_transfer):
             rewards = 0
             flow = environment.sample_environment()
-            if self.is_anomaly_aware:
-                anomalies = anomaly.generate_anomaly(0, config.cross_total_tick)
-                state = np.array([0] * (2 + config.cross_ways))
-                state[-1] = 4
+            if anomaly_value != 4:
+                anomalies = []
+                for i in range(0, config.cross_total_tick, config.anomaly_duration):
+                    anomalies.append(anomaly.CarAccident(i, anomaly_value))
             else:
                 anomalies = None
-                state = np.array([0] * (1 + config.cross_ways))
+
+            state = np.array([0] * self.input_size)
 
             for i in range(0, config.cross_total_tick, config.cross_decision_length):
                 state, reward = self.train_one_step(i % config.cross_total_tick, state, flow, anomalies)
                 rewards += reward
 
-            train_tqdm.set_description('average: %.2f' % (rewards / config.cross_total_tick))
+            print('epoch: %d, average: %.2f' % (j, rewards / config.cross_total_tick))
 
-        if self.is_anomaly_aware:
-            torch.save(self.state_dict(), 'model/a_rl.pth')
+        if anomaly_value != 4:
+            torch.save(self.state_dict(), 'model/a_rl_' + str(anomaly_value) + '.pth')
         else:
             torch.save(self.state_dict(), 'model/rl.pth')
 
@@ -147,8 +131,9 @@ class DQN(nn.Module):
 
 
 if __name__ == "__main__":
-    rl_model = DQN(False).to(config.cuda_device)
+    rl_model = DQN().to(config.cuda_device)
     rl_model.train_rl()
 
-    a_rl_model = DQN(True).to(config.cuda_device)
-    a_rl_model.train_rl()
+    for i in range(4):
+        a_rl_model = DQN(path='model/rl_new.pth').to(config.cuda_device)
+        a_rl_model.train_rl(i)

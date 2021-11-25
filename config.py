@@ -1,5 +1,3 @@
-import math
-
 import numpy as np
 import torch
 
@@ -31,11 +29,9 @@ sim_end = 24
 sim_start = 0
 sim_targets = [
     'A-RL',
-    'AD-RL',
     'ORL',
-    # 'SMC',
-    # 'RL-SMC',
-    # 'DEFAULT'
+    'SMC',
+    'DEFAULT'
 ]
 sim_tqdm_on = True
 
@@ -61,6 +57,7 @@ cuda_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # RL configuration
 rl_batch_size = 64
 rl_episodes = 500
+rl_episodes_transfer = 100
 rl_epsilon_start = 0.9
 rl_epsilon_end = 0.05
 rl_epsilon_decay = 200
@@ -76,7 +73,7 @@ rl_smc_threshold = 0.25
 # Crossroad anomaly configuration
 anomaly_after = 720
 anomaly_duration = 360
-anomaly_mtth = 2160
+anomaly_mtth = 108000
 
 # Anomaly detector configuration
 anomaly_d_episodes = 300

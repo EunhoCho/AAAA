@@ -4,10 +4,10 @@ import numpy as np
 import torch
 from tqdm import tqdm
 
-import rl
-import statistical_model_checking
 import anomaly
 import config
+import rl
+import statistical_model_checking
 
 
 def generate_outflow(decision, current_anomaly=None, is_sum=False):
@@ -35,21 +35,6 @@ def generate_outflow(decision, current_anomaly=None, is_sum=False):
         return sum_v
 
     return outflow
-
-
-def decision_making_god(tick, inflow, state, anomalies):
-    tactics = config.cross_tactics.copy()
-    opt_tactic = None
-    min_value = -1
-
-    for tactic in tactics:
-        result, _ = run_crossroad(tick, inflow, tactic, state, anomalies)
-        sum_result = sum(sum(result))
-        if min_value == -1 or min_value > sum_result:
-            opt_tactic = tactic
-            min_value = sum_result
-
-    return opt_tactic
 
 
 def decision_making_SMC(tick, state, is_sprt=False, tactics=None):
@@ -135,16 +120,20 @@ def run(name, cross_type, start, end, inflow, anomalies, decision=None, tqdm_on=
             state = np.array([0] * config.cross_ways)
             result = []
 
-            if cross_type == 'RL' or cross_type == 'RL-SMC' or cross_type == 'ORL':
+            if cross_type == 'RL' or cross_type == 'ORL':
                 rl_model = rl.DQN(path='model/rl.pth').to(config.cuda_device)
 
             if cross_type == 'A-RL' or cross_type == 'AD-RL':
-                rl_model = rl.DQN(True, path='model/a_rl.pth').to(
-                    config.cuda_device)
+                a_rl_models = [
+                    rl.DQN(path='model/a_rl_0.pth').to(config.cuda_device),
+                    rl.DQN(path='model/a_rl_1.pth').to(config.cuda_device),
+                    rl.DQN(path='model/a_rl_2.pth').to(config.cuda_device),
+                    rl.DQN(path='model/a_rl_3.pth').to(config.cuda_device)
+                ]
+                anomaly_value = 4
 
             if cross_type == 'AD-RL':
                 ad_model = anomaly.CarAccidentDetector(path='model/ad.pth').to(config.cuda_device)
-                anomaly_value = 4
 
             tick_tqdm = range(start, end, config.cross_decision_length)
             if tqdm_on:
@@ -152,24 +141,18 @@ def run(name, cross_type, start, end, inflow, anomalies, decision=None, tqdm_on=
                 tick_tqdm.set_description(name + " - " + cross_type)
 
             for i in tick_tqdm:
-                if cross_type == 'GOD':
-                    decision = decision_making_god(i, inflow, state, anomalies)
-                elif cross_type == 'SMC':
+                if cross_type == 'SMC':
                     decision = decision_making_SMC(i, state)
                 elif cross_type == 'RL' or cross_type == 'ORL':
                     tactic = decision_making_rl(i, state, rl_model)
                     decision = config.cross_tactics[tactic]
-                elif cross_type == 'RL-SMC':
-                    decision = decision_making_rl_smc(i, state, rl_model)
-                elif cross_type == 'A-RL':
-                    anomaly_value = 4
-                    for single_anomaly in anomalies:
-                        if single_anomaly.valid(i - config.cross_decision_length):
-                            anomaly_value = single_anomaly.way
-                            break
-                    decision = decision_making_a_rl(i, state, rl_model, anomaly_value)
-                elif cross_type == 'AD-RL':
-                    decision = decision_making_a_rl(i, state, rl_model, anomaly_value)
+                elif cross_type == 'A-RL' or cross_type == 'AD-RL':
+                    if anomaly_value != 4:
+                        target_model = a_rl_models[anomaly_value]
+                    else:
+                        target_model = rl_model
+                    tactic = decision_making_rl(i, state, target_model)
+                    decision = config.cross_tactics[tactic]
 
                 dm_writer.writerow([i, *decision])
 
@@ -182,7 +165,13 @@ def run(name, cross_type, start, end, inflow, anomalies, decision=None, tqdm_on=
                 if cross_type == 'ORL':
                     rl_model.push_optimize([*state, i], tactic, sum(sum(phase_result)),
                                            [*next_state, i + config.cross_decision_length])
-                if cross_type == 'AD-RL':
+                elif cross_type == 'A-RL':
+                    anomaly_value = 4
+                    for single_anomaly in anomalies:
+                        if single_anomaly.valid(i - config.cross_decision_length):
+                            anomaly_value = single_anomaly.way
+                            break
+                elif cross_type == 'AD-RL':
                     data = [i]
                     for j in range(config.cross_decision_length):
                         data.extend(phase_result[j])
