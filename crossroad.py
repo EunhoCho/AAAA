@@ -10,7 +10,7 @@ import anomaly
 import config
 
 
-def generate_outflow(decision, current_anomaly):
+def generate_outflow(decision, current_anomaly=None, is_sum=False):
     phase = 0
     tick = 0
     outflow = []
@@ -26,6 +26,13 @@ def generate_outflow(decision, current_anomaly):
         while phase < 6 and tick == decision[phase]:
             phase += 1
             tick = 0
+
+    if is_sum:
+        sum_v = np.array([0] * config.cross_ways)
+        for i in range(config.cross_decision_length):
+            sum_v += np.array(outflow[i])
+
+        return sum_v
 
     return outflow
 

@@ -30,11 +30,12 @@ sim_count = 20
 sim_end = 24
 sim_start = 0
 sim_targets = [
+    'A-RL',
     'AD-RL',
     'ORL',
-    'SMC',
-    'RL-SMC',
-    'DEFAULT'
+    # 'SMC',
+    # 'RL-SMC',
+    # 'DEFAULT'
 ]
 sim_tqdm_on = True
 
@@ -82,7 +83,7 @@ anomaly_d_episodes = 300
 anomaly_d_hidden_layer = 256
 anomaly_d_learning_rate = 0.001
 anomaly_d_momentum = 0.9
-anomaly_d_batch_size = 4
+anomaly_d_batch_size = 64
 
 # Calculations, Assertions
 cross_out_flow = np.array([[cross_out_straight, cross_out_left, 0, 0, 0, 0, 0, 0],

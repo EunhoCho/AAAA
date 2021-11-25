@@ -76,7 +76,9 @@ class CarAccidentDetector(nn.Module):
             nn.ReLU(),
             nn.Linear(config.anomaly_d_hidden_layer, config.anomaly_d_hidden_layer),
             nn.ReLU(),
-            nn.Linear(config.anomaly_d_hidden_layer, 5),
+            nn.Linear(config.anomaly_d_hidden_layer, 64),
+            nn.ReLU(),
+            nn.Linear(64, 5),
         )
         self.criterion = nn.CrossEntropyLoss()
         self.optimizer = optim.SGD(self.parameters(), lr=config.anomaly_d_learning_rate,
