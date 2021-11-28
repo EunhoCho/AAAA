@@ -151,6 +151,12 @@ if __name__ == "__main__":
         result = res.json()
 
         print('tick: ', result['tick'])
+        if 'alert' in result.keys():
+            print('Reward', result['reward'])
+            print('Processed', result['tick'] - 1)
+            print(result['alert'])
+            break
+
         print('request: ', result['request'])
         if int(result['c_decision']) != 3:
             print('C: ', result['recent_c'], ' => ', result['c_decision'])
@@ -159,7 +165,7 @@ if __name__ == "__main__":
 
         r_decision = list(result['r_decision'])
         for i in range(3):
-            if r_decision[i] == 'True':
+            if r_decision[i]:
                 print('R', str(i), ': ', result['inventory_' + str(i)], ' => S')
             else:
                 print('R', str(i), ': ', result['inventory_' + str(i)])
@@ -171,13 +177,10 @@ if __name__ == "__main__":
 
         order_string = 'Remain Order: '
         for i in range(1, 5):
-            order_string = result['order_r_' + str(i)] + '+' + result['order_s_' + str(i)]
+            order_string += str(result['order_r_' + str(i)]) + '+' + str(result['order_s_' + str(i)])
             if i != 4:
                 order_string += ', '
         print(order_string)
-
-        if 'alert' in result.keys():
-            break
 
         if tick < 20:
             order_message = {
