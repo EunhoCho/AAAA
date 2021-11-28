@@ -150,10 +150,8 @@ if __name__ == "__main__":
         res = requests.post(address, data=process_message)
         result = res.json()
 
-        print('tick: ', result['tick'])
+        print('tick: ', result['tick'], ', Reward: ', result['reward'])
         if 'alert' in result.keys():
-            print('Reward', result['reward'])
-            print('Processed', result['tick'] - 1)
             print(result['alert'])
             break
 
