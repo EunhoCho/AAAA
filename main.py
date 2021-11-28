@@ -59,7 +59,7 @@ def generate_order_list(name=None):
 
 if __name__ == "__main__":
     experiment_name = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    order_list = generate_order_list()
+    order_list = generate_order_list(experiment_name)
     anomalies = generate_anomaly(is_real=True, name=experiment_name)
 
     # Import Orders and Anomalies
@@ -151,7 +151,30 @@ if __name__ == "__main__":
         result = res.json()
 
         print('tick: ', result['tick'])
-        print(result)
+        print('request: ', result['request'])
+        if int(result['c_decision']) != 3:
+            print('C: ', result['recent_c'], ' => ', result['c_decision'])
+        else:
+            print('C: ', result['recent_c'])
+
+        r_decision = list(result['r_decision'])
+        for i in range(3):
+            if r_decision[i] == 'True':
+                print('R', str(i), ': ', result['inventory_' + str(i)], ' => S')
+            else:
+                print('R', str(i), ': ', result['inventory_' + str(i)])
+
+        if int(result['c_decision']) != 3:
+            print('S: ', result['inventory_3'], ' => ', result['s_decision'])
+        else:
+            print('S: ', result['inventory_3'])
+
+        order_string = 'Remain Order: '
+        for i in range(1, 5):
+            order_string = result['order_r_' + str(i)] + '+' + result['order_s_' + str(i)]
+            if i != 4:
+                order_string += ', '
+        print(order_string)
 
         if 'alert' in result.keys():
             break
