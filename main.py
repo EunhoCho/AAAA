@@ -156,7 +156,8 @@ if __name__ == "__main__":
                 'title': 'Process',
                 'msg': json.dumps({
                     'anomaly_0': 1 if anomaly_0 else 0,
-                    'anomaly_2': 1 if anomaly_2 else 0
+                    'anomaly_2': 1 if anomaly_2 else 0,
+                    'tick': tick
                 })
             }
             res = requests.post(address, data=process_message)
