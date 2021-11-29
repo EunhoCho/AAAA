@@ -87,6 +87,10 @@ if __name__ == "__main__":
     order_list = generate_order_list(experiment_name)
     anomalies = generate_anomaly(is_real=True, name=experiment_name)
 
+    dm_type = "AAAA"
+    # dm_type = "ORL"
+    # dm_type = "Random"
+
     # Import Orders and Anomalies
     # experiment_name = '2021-11-20-21-58-27'
     # order_list = []
@@ -115,33 +119,11 @@ if __name__ == "__main__":
                      'msg':
                          json.dumps({
                              "experiment_type": "SAS",
-                             "dm_type": "AAAA"
+                             "dm_type": dm_type
                          })
                      }
     requests.post(address, data=start_message)
-
-    # ORL
-    # start_message = {'sender': 0,
-    #                  'title': "Start",
-    #                  'msg':
-    #                      json.dumps({
-    #                          "experiment_type": "SAS",
-    #                          "dm_type": "ORL"
-    #                      })
-    #                  }
-    # requests.post(address, data=start_message)
-
-    # Random
-    # start_message = {'sender': 0,
-    #                  'title': "Start",
-    #                  'msg':
-    #                      json.dumps({
-    #                          "experiment_type": "SAS",
-    #                          "dm_type": "Random"
-    #                      })
-    #                  }
-    # requests.post(address, data=start_message)
-    print("STARTED")
+    print("STARTED - ", dm_type)
 
     tick = 0
 
