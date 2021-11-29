@@ -153,143 +153,152 @@ if __name__ == "__main__":
         for _ in range(5):
             request_list.append(order_list[i])
 
-    while True:
-        input()
+    with open('log/warehouse/' + experiment_name + '.txt', 'w') as log_file:
+        while True:
+            input()
 
-        if tick == anomalies[0][0]:
-            anomaly_0 = True
-            anomalies[0].pop(0)
-        else:
-            anomaly_0 = False
-
-        if tick == anomalies[2][0]:
-            anomaly_2 = True
-            anomalies[2].pop(0)
-        else:
-            anomaly_2 = False
-
-        process_message = {
-            'sender': 0,
-            'title': 'Process',
-            'msg': json.dumps({
-                'anomaly_0': 1 if anomaly_0 else 0,
-                'anomaly_2': 1 if anomaly_2 else 0
-            })
-        }
-        res = requests.post(address, data=process_message)
-        result = res.json()
-
-        print('tick: ', result['tick'], ', Reward: ', result['reward'])
-        if 'alert' in result.keys():
-            print(result['alert'])
-            break
-
-        # up line
-        up_line = '   ┌─ '
-        up_line += inventory_text(result['inventory_r_0'])
-
-        if result['anomaly_0'] == 1:
-            if result['stuck_0'] == 1:
-                up_line += '─┐ Anomaly(Stuck)      ┌─ '
+            if tick == anomalies[0][0]:
+                anomaly_0 = True
+                anomalies[0].pop(0)
             else:
-                up_line += '─┐ Anomaly             ┌─ '
-        else:
-            up_line += '─┐                     ┌─ '
+                anomaly_0 = False
 
-        if result['c_decision'] == 0:
-            up_line += inventory_text(result['inventory_r_0'], new=[str(result['recent_c'])],
-                                      out=result['r_decision'][0])
-        else:
-            up_line += inventory_text(result['inventory_r_0'], out=result['r_decision'][0])
-
-        up_line += '─┐'
-        print(up_line)
-
-        # middle line
-        if result['recent_c'] != 0:
-            middle_line = str(result['recent_c'])
-        else:
-            middle_line = ' '
-
-        middle_line += ' ─┼─ '
-        middle_line += inventory_text(result['inventory_r_1'])
-        middle_line += '─┼─ '
-        middle_line += inventory_text(result['inventory_r_3'])
-        middle_line += '====> '
-
-        if tick > 0 and tick - 1 < 20:
-            middle_line += request_list[tick - 1]
-        else:
-            middle_line += ' '
-
-        middle_line += ' ─┼─ '
-        if result['c_decision'] == 1:
-            middle_line += inventory_text(result['inventory_r_1'], new=[str(result['recent_c'])],
-                                          out=result['r_decision'][1])
-        else:
-            middle_line += inventory_text(result['inventory_r_1'], out=result['r_decision'][1])
-
-        middle_line += '─┼─ '
-        r_out = []
-        for i in [1, 0, 2]:
-            if result['r_decision'][i]:
-                r_out.append(result['inventory_r_' + str(i)][0])
-
-        if result['s_decision'] != 3:
-            if len(r_out) != 0:
-                middle_line += inventory_text(result['inventory_r_1'], new=r_out, out=True)
+            if tick == anomalies[2][0]:
+                anomaly_2 = True
+                anomalies[2].pop(0)
             else:
-                middle_line += inventory_text(result['inventory_r_1'], out=True)
-        elif len(r_out) != 0:
-            middle_line += inventory_text(result['inventory_r_1'], new=r_out)
-        else:
-            middle_line += inventory_text(result['inventory_r_1'])
+                anomaly_2 = False
 
-        print(middle_line)
-
-        # down line
-        down_line = '   └─ '
-        down_line += inventory_text(result['inventory_r_2'])
-
-        if result['anomaly_2'] == 1:
-            if result['stuck_2'] == 1:
-                down_line += '─┘ Anomaly(Stuck)      └─ '
-            else:
-                down_line += '─┘ Anomaly             └─ '
-        else:
-            down_line += '─┘                     └─ '
-
-        if result['c_decision'] == 2:
-            down_line += inventory_text(result['inventory_r_2'], new=[str(result['recent_c'])],
-                                        out=result['r_decision'][2])
-        else:
-            down_line += inventory_text(result['inventory_r_2'], out=result['r_decision'][2])
-
-        down_line += '─┘'
-        print(down_line)
-
-        # order line
-        order_line = 'Order: '
-        orders = []
-        for i in range(1, 5):
-            orders.append(result['order_r_' + str(i)])
-            order_line += str(result['order_r_' + str(i)]) + ' '
-        order_line += '  +   '
-        for i in range(1, 5):
-            orders[i - 1] += result['order_s_' + str(i)]
-            order_line += str(result['order_s_' + str(i)]) + ' '
-        order_line += ' = '
-        for i in range(1, 5):
-            order_line += str(orders[i - 1]) + ' '
-        order_line = '=> Total: %2d' % sum(orders)
-        print(order_line)
-
-        if tick < 20:
-            order_message = {
-                'item_type': order_list[tick],
-                'dest': random.randrange(3)
+            process_message = {
+                'sender': 0,
+                'title': 'Process',
+                'msg': json.dumps({
+                    'anomaly_0': 1 if anomaly_0 else 0,
+                    'anomaly_2': 1 if anomaly_2 else 0
+                })
             }
-            requests.post(order_address, data=order_message)
+            res = requests.post(address, data=process_message)
+            result = res.json()
 
-        tick += 1
+            tick_reward_line = 'tick: %2d, Reward: %4d' % (result['tick'], result['reward'])
+            print('tick: %2d, Reward: %4d' % (result['tick'], result['reward']))
+            log_file.write(tick_reward_line + '\n')
+            if 'alert' in result.keys():
+                print(result['alert'])
+                log_file.write(result['alert'])
+                break
+
+            # up line
+            up_line = '   ┌─ '
+            up_line += inventory_text(result['inventory_r_0'])
+
+            if result['anomaly_0'] == 1:
+                if result['stuck_0'] == 1:
+                    up_line += '─┐ Anomaly(Stuck)      ┌─ '
+                else:
+                    up_line += '─┐ Anomaly             ┌─ '
+            else:
+                up_line += '─┐                     ┌─ '
+
+            if result['c_decision'] == 0:
+                up_line += inventory_text(result['inventory_r_0'], new=[str(result['recent_c'])],
+                                          out=result['r_decision'][0])
+            else:
+                up_line += inventory_text(result['inventory_r_0'], out=result['r_decision'][0])
+
+            up_line += '─┐'
+            print(up_line)
+            log_file.write(up_line + '\n')
+
+            # middle line
+            if result['recent_c'] != 0:
+                middle_line = str(result['recent_c'])
+            else:
+                middle_line = ' '
+
+            middle_line += ' ─┼─ '
+            middle_line += inventory_text(result['inventory_r_1'])
+            middle_line += '─┼─ '
+            middle_line += inventory_text(result['inventory_r_3'])
+            middle_line += '====> '
+
+            if tick > 0 and tick - 1 < 20:
+                middle_line += request_list[tick - 1]
+            else:
+                middle_line += ' '
+
+            middle_line += ' ─┼─ '
+            if result['c_decision'] == 1:
+                middle_line += inventory_text(result['inventory_r_1'], new=[str(result['recent_c'])],
+                                              out=result['r_decision'][1])
+            else:
+                middle_line += inventory_text(result['inventory_r_1'], out=result['r_decision'][1])
+
+            middle_line += '─┼─ '
+            r_out = []
+            for i in [1, 0, 2]:
+                if result['r_decision'][i]:
+                    r_out.append(result['inventory_r_' + str(i)][0])
+
+            if result['s_decision'] != 3:
+                if len(r_out) != 0:
+                    middle_line += inventory_text(result['inventory_r_1'], new=r_out, out=True)
+                else:
+                    middle_line += inventory_text(result['inventory_r_1'], out=True)
+            elif len(r_out) != 0:
+                middle_line += inventory_text(result['inventory_r_1'], new=r_out)
+            else:
+                middle_line += inventory_text(result['inventory_r_1'])
+
+            print(middle_line)
+            log_file.write(middle_line + '\n')
+
+            # down line
+            down_line = '   └─ '
+            down_line += inventory_text(result['inventory_r_2'])
+
+            if result['anomaly_2'] == 1:
+                if result['stuck_2'] == 1:
+                    down_line += '─┘ Anomaly(Stuck)      └─ '
+                else:
+                    down_line += '─┘ Anomaly             └─ '
+            else:
+                down_line += '─┘                     └─ '
+
+            if result['c_decision'] == 2:
+                down_line += inventory_text(result['inventory_r_2'], new=[str(result['recent_c'])],
+                                            out=result['r_decision'][2])
+            else:
+                down_line += inventory_text(result['inventory_r_2'], out=result['r_decision'][2])
+
+            down_line += '─┘'
+            print(down_line)
+            log_file.write(down_line + '\n')
+
+            # order line
+            order_line = 'Order: '
+            orders = []
+            for i in range(1, 5):
+                orders.append(result['order_r_' + str(i)])
+                order_line += str(result['order_r_' + str(i)]) + ' '
+            order_line += '  +   '
+            for i in range(1, 5):
+                orders[i - 1] += result['order_s_' + str(i)]
+                order_line += str(result['order_s_' + str(i)]) + ' '
+            order_line += ' = '
+            for i in range(1, 5):
+                order_line += str(orders[i - 1]) + ' '
+            order_line = '=> Total: %2d' % sum(orders)
+            print(order_line)
+            log_file.write(order_line + '\n')
+
+            if tick < 20:
+                order_message = {
+                    'item_type': order_list[tick],
+                    'dest': random.randrange(3)
+                }
+                requests.post(order_address, data=order_message)
+
+            tick += 1
+            log_file.write('\n')
 
