@@ -19,15 +19,19 @@ anomaly_wait = 3
 
 def generate_anomaly(is_real=True, name=None):
     anomalies = [[], [], []]
+    print_anomalies = []
 
     count = 1
     tick = 1
-    while tick < order_total * 100:
+    while tick < order_total * 5:
         prob = 1 - math.exp(-count / anomaly_mtbf)
         if random.random() < prob:
-            anomalies[random.choice([0, 2] if is_real else [0, 1, 2])].append(tick)
+            chosen = random.choice([0, 2] if is_real else [0, 1, 2])
+            anomalies[chosen].append(tick)
             count = 0
             tick += anomaly_duration
+
+            print_anomalies.append((tick, chosen))
 
         count += 1
         tick += 1
@@ -35,9 +39,8 @@ def generate_anomaly(is_real=True, name=None):
     if name is not None:
         with open('log/anomaly/' + name + '.csv', 'w', newline='') as csv_file:
             csv_writer = csv.writer(csv_file)
-            for i in range(3):
-                for anomaly in anomalies[i]:
-                    csv_writer.writerow([anomaly, i])
+            for anomaly in print_anomalies:
+                csv_writer.writerow([anomaly[0], anomaly[1]])
 
     return anomalies
 
@@ -57,6 +60,28 @@ def generate_order_list(name=None):
     return ans
 
 
+def inventory_text(inventory, new=None, out=False):
+    if inventory == '':
+        inventory = []
+    else:
+        inventory = inventory.split(',')[:-1]
+
+    if new is not None:
+        inventory.extend(new)
+    if out:
+        inventory = inventory[1:]
+
+    ans = ''
+    for i in range(5):
+        idx = 4 - i
+        if len(inventory) <= idx:
+            ans += ' '
+        else:
+            ans += inventory[idx]
+        ans += ' '
+    return ans
+
+
 if __name__ == "__main__":
     experiment_name = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
     order_list = generate_order_list(experiment_name)
@@ -70,7 +95,7 @@ if __name__ == "__main__":
     #     data = list(reader)
     #
     #     for single_data in data:
-    #         order_list.append(int(single_data[0]))
+    #         order_list.append(int(single_data[1]))
     #
     # anomalies = [[], [], []]
     # with open('log/anomaly/' + experiment_name + '.csv', 'r', newline='') as csv_file:
@@ -119,10 +144,14 @@ if __name__ == "__main__":
     print("STARTED")
 
     tick = 0
-    tried = [0] * 3
 
     anomalies[0].append(1000000)
     anomalies[2].append(1000000)
+
+    request_list = []
+    for i in range(4):
+        for _ in range(5):
+            request_list.append(order_list[i])
 
     while True:
         input()
@@ -155,30 +184,105 @@ if __name__ == "__main__":
             print(result['alert'])
             break
 
-        print('request: ', result['request'])
-        if int(result['c_decision']) != 3:
-            print('C: ', result['recent_c'], ' => ', result['c_decision'])
-        else:
-            print('C: ', result['recent_c'])
+        # up line
+        up_line = '   ┌─ '
+        up_line += inventory_text(result['inventory_r_0'])
 
-        r_decision = list(result['r_decision'])
-        for i in range(3):
-            if r_decision[i]:
-                print('R', str(i), ': ', result['inventory_' + str(i)], ' => S')
+        if result['anomaly_0'] == 1:
+            if result['stuck_0'] == 1:
+                up_line += '─┐ Anomaly(Stuck)      ┌─ '
             else:
-                print('R', str(i), ': ', result['inventory_' + str(i)])
-
-        if int(result['c_decision']) != 3:
-            print('S: ', result['inventory_3'], ' => ', result['s_decision'])
+                up_line += '─┐ Anomaly             ┌─ '
         else:
-            print('S: ', result['inventory_3'])
+            up_line += '─┐                     ┌─ '
 
-        order_string = 'Remain Order: '
+        if result['c_decision'] == 0:
+            up_line += inventory_text(result['inventory_r_0'], new=[str(result['recent_c'])],
+                                      out=result['r_decision'][0])
+        else:
+            up_line += inventory_text(result['inventory_r_0'], out=result['r_decision'][0])
+
+        up_line += '─┐'
+        print(up_line)
+
+        # middle line
+        if result['recent_c'] != 0:
+            middle_line = str(result['recent_c'])
+        else:
+            middle_line = ' '
+
+        middle_line += ' ─┼─ '
+        middle_line += inventory_text(result['inventory_r_1'])
+        middle_line += '─┼─ '
+        middle_line += inventory_text(result['inventory_r_3'])
+        middle_line += '====> '
+
+        if tick > 0 and tick - 1 < 20:
+            middle_line += request_list[tick - 1]
+        else:
+            middle_line += ' '
+
+        middle_line += ' ─┼─ '
+        if result['c_decision'] == 1:
+            middle_line += inventory_text(result['inventory_r_1'], new=[str(result['recent_c'])],
+                                          out=result['r_decision'][1])
+        else:
+            middle_line += inventory_text(result['inventory_r_1'], out=result['r_decision'][1])
+
+        middle_line += '─┼─ '
+        r_out = []
+        for i in [1, 0, 2]:
+            if result['r_decision'][i]:
+                r_out.append(result['inventory_r_' + str(i)][0])
+
+        if result['s_decision'] != 3:
+            if len(r_out) != 0:
+                middle_line += inventory_text(result['inventory_r_1'], new=r_out, out=True)
+            else:
+                middle_line += inventory_text(result['inventory_r_1'], out=True)
+        elif len(r_out) != 0:
+            middle_line += inventory_text(result['inventory_r_1'], new=r_out)
+        else:
+            middle_line += inventory_text(result['inventory_r_1'])
+
+        print(middle_line)
+
+        # down line
+        down_line = '   └─ '
+        down_line += inventory_text(result['inventory_r_2'])
+
+        if result['anomaly_2'] == 1:
+            if result['stuck_2'] == 1:
+                down_line += '─┘ Anomaly(Stuck)      └─ '
+            else:
+                down_line += '─┘ Anomaly             └─ '
+        else:
+            down_line += '─┘                     └─ '
+
+        if result['c_decision'] == 2:
+            down_line += inventory_text(result['inventory_r_2'], new=[str(result['recent_c'])],
+                                        out=result['r_decision'][2])
+        else:
+            down_line += inventory_text(result['inventory_r_2'], out=result['r_decision'][2])
+
+        down_line += '─┘'
+        print(down_line)
+
+        # order line
+        order_line = 'Order: '
+        orders = []
         for i in range(1, 5):
-            order_string += str(result['order_r_' + str(i)]) + '+' + str(result['order_s_' + str(i)])
-            if i != 4:
-                order_string += ', '
-        print(order_string)
+            orders.append(result['order_r_' + str(i)])
+            order_line += str(result['order_r_' + str(i)]) + ' '
+        order_line += '  +   '
+        for i in range(1, 5):
+            orders[i - 1] += result['order_s_' + str(i)]
+            order_line += str(result['order_s_' + str(i)]) + ' '
+        order_line += ' = '
+        for i in range(1, 5):
+            order_line += str(orders[i - 1]) + ' '
+        order_line = '=> Total: %2d' % sum(orders)
+        print(order_line)
 
         if tick < 20:
             order_message = {
