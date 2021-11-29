@@ -135,7 +135,7 @@ if __name__ == "__main__":
         for _ in range(5):
             request_list.append(order_list[i])
 
-    with open('log/warehouse/' + experiment_name + '.txt', 'w') as log_file:
+    with open('log/warehouse/' + experiment_name + '_' + dm_type + '.txt', 'w') as log_file:
         while True:
             input()
 
