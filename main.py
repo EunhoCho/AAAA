@@ -305,8 +305,8 @@ if __name__ == "__main__":
             order_line = 'Order: '
             orders = []
             for i in range(1, 5):
-                orders.append(result['order_' + str(i)])
-                order_line += str(result['order_' + str(i)]) + ' '
+                orders.append(result['order_r_' + str(i)])
+                order_line += str(result['order_r_' + str(i)]) + ' '
             order_line += '  +   '
             for i in range(1, 5):
                 orders[i - 1] += result['order_s_' + str(i)]
