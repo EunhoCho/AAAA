@@ -171,22 +171,29 @@ if __name__ == "__main__":
                 break
 
             # up line
-            up_line = '   ┌─ '
-            up_line += inventory_text(result['inventory_r_0'])
+            if result['c_decision'] == 0:
+                up_line = '   ┏━ '
+            else:
+                up_line = '   ┌─ '
+            up_line += inventory_text(result['inventory_0'])
 
             if result['anomaly_0'] == 1:
                 if result['stuck_0'] == 1:
                     up_line += '─┐ Anomaly(Stuck)      ┌─ '
+                elif result['r_decision'][0]:
+                    up_line += '━┓ Anomaly             ┌─ '
                 else:
                     up_line += '─┐ Anomaly             ┌─ '
+            elif result['r_decision'][0]:
+                up_line += '━┓                     ┌─ '
             else:
                 up_line += '─┐                     ┌─ '
 
             if result['c_decision'] == 0:
-                up_line += inventory_text(result['inventory_r_0'], new=[str(result['recent_c'])],
+                up_line += inventory_text(result['inventory_0'], new=[str(result['recent_c'])],
                                           out=result['r_decision'][0])
             else:
-                up_line += inventory_text(result['inventory_r_0'], out=result['r_decision'][0])
+                up_line += inventory_text(result['inventory_0'], out=result['r_decision'][0])
 
             up_line += '─┐'
             print(up_line)
@@ -198,11 +205,41 @@ if __name__ == "__main__":
             else:
                 middle_line = ' '
 
-            middle_line += ' ─┼─ '
-            middle_line += inventory_text(result['inventory_r_1'])
-            middle_line += '─┼─ '
-            middle_line += inventory_text(result['inventory_r_3'])
-            middle_line += '====> '
+            if result['c_decision'] == 1:
+                middle_line += ' ━┿━ '
+            elif result['c_decision'] == 0:
+                middle_line += ' ━╃─ '
+            elif result['c_decision'] == 2:
+                middle_line += ' ━╅─ '
+            else:
+                middle_line += ' ─┼─ '
+
+            middle_line += inventory_text(result['inventory_1'])
+            if result['r_decision'][0]:
+                if result['r_decision'][1]:
+                    if result['r_decision'][2]:
+                        middle_line += '━╋━ '
+                    else:
+                        middle_line += '━╇━ '
+                elif result['r_decision'][2]:
+                    middle_line += '─╊━ '
+                else:
+                    middle_line += '─╄━ '
+            elif result['r_decision'][1]:
+                if result['r_decision'][2]:
+                    middle_line += '━╈━ '
+                else:
+                    middle_line += '━┿━ '
+            elif result['r_decision'][2]:
+                middle_line += '─╆━ '
+            else:
+                middle_line += '─┼─ '
+            middle_line += inventory_text(result['inventory_3'])
+
+            if result['s_decision'] != 3:
+                middle_line += '====> '
+            else:
+                middle_line += '----> '
 
             if tick > 0 and tick - 1 < 20:
                 middle_line += request_list[tick - 1]
@@ -211,47 +248,54 @@ if __name__ == "__main__":
 
             middle_line += ' ─┼─ '
             if result['c_decision'] == 1:
-                middle_line += inventory_text(result['inventory_r_1'], new=[str(result['recent_c'])],
+                middle_line += inventory_text(result['inventory_1'], new=[str(result['recent_c'])],
                                               out=result['r_decision'][1])
             else:
-                middle_line += inventory_text(result['inventory_r_1'], out=result['r_decision'][1])
+                middle_line += inventory_text(result['inventory_1'], out=result['r_decision'][1])
 
             middle_line += '─┼─ '
             r_out = []
             for i in [1, 0, 2]:
                 if result['r_decision'][i]:
-                    r_out.append(result['inventory_r_' + str(i)][0])
+                    r_out.append(result['inventory_' + str(i)][0])
 
             if result['s_decision'] != 3:
                 if len(r_out) != 0:
-                    middle_line += inventory_text(result['inventory_r_1'], new=r_out, out=True)
+                    middle_line += inventory_text(result['inventory_3'], new=r_out, out=True)
                 else:
-                    middle_line += inventory_text(result['inventory_r_1'], out=True)
+                    middle_line += inventory_text(result['inventory_3'], out=True)
             elif len(r_out) != 0:
-                middle_line += inventory_text(result['inventory_r_1'], new=r_out)
+                middle_line += inventory_text(result['inventory_3'], new=r_out)
             else:
-                middle_line += inventory_text(result['inventory_r_1'])
+                middle_line += inventory_text(result['inventory_3'])
 
             print(middle_line)
             log_file.write(middle_line + '\n')
 
             # down line
-            down_line = '   └─ '
-            down_line += inventory_text(result['inventory_r_2'])
+            if result['c_decision'] == 2:
+                down_line = '   ┗━ '
+            else:
+                down_line = '   └─ '
+            down_line += inventory_text(result['inventory_2'])
 
             if result['anomaly_2'] == 1:
                 if result['stuck_2'] == 1:
-                    down_line += '─┘ Anomaly(Stuck)      └─ '
+                    up_line += '─┘ Anomaly(Stuck)      └─ '
+                elif result['r_decision'][2]:
+                    up_line += '━┛ Anomaly             └─ '
                 else:
-                    down_line += '─┘ Anomaly             └─ '
+                    up_line += '─┘ Anomaly             └─ '
+            elif result['r_decision'][2]:
+                up_line += '━┛                     └─ '
             else:
-                down_line += '─┘                     └─ '
+                up_line += '─┘                     └─ '
 
             if result['c_decision'] == 2:
-                down_line += inventory_text(result['inventory_r_2'], new=[str(result['recent_c'])],
+                down_line += inventory_text(result['inventory_2'], new=[str(result['recent_c'])],
                                             out=result['r_decision'][2])
             else:
-                down_line += inventory_text(result['inventory_r_2'], out=result['r_decision'][2])
+                down_line += inventory_text(result['inventory_2'], out=result['r_decision'][2])
 
             down_line += '─┘'
             print(down_line)
@@ -261,8 +305,8 @@ if __name__ == "__main__":
             order_line = 'Order: '
             orders = []
             for i in range(1, 5):
-                orders.append(result['order_r_' + str(i)])
-                order_line += str(result['order_r_' + str(i)]) + ' '
+                orders.append(result['order_' + str(i)])
+                order_line += str(result['order_' + str(i)]) + ' '
             order_line += '  +   '
             for i in range(1, 5):
                 orders[i - 1] += result['order_s_' + str(i)]
