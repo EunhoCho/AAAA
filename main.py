@@ -243,7 +243,7 @@ if __name__ == "__main__":
                 middle_line += '----> '
 
             if tick > 0 and tick - 1 < 20:
-                middle_line += request_list[tick - 1]
+                middle_line += str(request_list[tick - 1])
             else:
                 middle_line += ' '
 
@@ -282,15 +282,15 @@ if __name__ == "__main__":
 
             if result['anomaly_2'] == 1:
                 if result['stuck_2'] == 1:
-                    up_line += '─┘ Anomaly(Stuck)      └─ '
+                    down_line += '─┘ Anomaly(Stuck)      └─ '
                 elif result['r_decision'][2]:
-                    up_line += '━┛ Anomaly             └─ '
+                    down_line += '━┛ Anomaly             └─ '
                 else:
-                    up_line += '─┘ Anomaly             └─ '
+                    down_line += '─┘ Anomaly             └─ '
             elif result['r_decision'][2]:
-                up_line += '━┛                     └─ '
+                down_line += '━┛                     └─ '
             else:
-                up_line += '─┘                     └─ '
+                down_line += '─┘                     └─ '
 
             if result['c_decision'] == 2:
                 down_line += inventory_text(result['inventory_2'], new=[str(result['recent_c'])],
