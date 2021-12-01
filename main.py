@@ -315,7 +315,7 @@ if __name__ == "__main__":
             order_line += ' = '
             for i in range(1, 5):
                 order_line += str(orders[i - 1]) + ' '
-            order_line = '=> Total: %2d' % sum(orders)
+            order_line += '=> Total: %2d' % sum(orders)
             print(order_line)
             log_file.write(order_line + '\n')
 
